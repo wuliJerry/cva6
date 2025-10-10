@@ -51,4 +51,4 @@ def process_elf(FILE, GATESIZE):
 
 if __name__ == "__main__":
     print(sys.argv)
-    process_elf(FILE=sys.argv[1], GATESIZE=int(sys.argv[2], 10))
+    process_elf(FILE=sys.argv[1], GATESIZE=float(sys.argv[2]))
