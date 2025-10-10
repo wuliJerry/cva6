@@ -19,6 +19,7 @@ set TARGET_LIBRARY_FILES          [getenv TARGET_LIBRARY_FILES];
 set INPUT_DELAY                   [getenv INPUT_DELAY];
 set OUTPUT_DELAY                  [getenv OUTPUT_DELAY];
 set LOCAL_LIB_PATH                [getenv LOCAL_LIB_PATH];
+set HPDCACHE_DIR                  [getenv HPDCACHE_DIR];
 
 set ADDITIONAL_LINK_LIB_FILES     "                                  ";#  Extra link logical libraries not included in TARGET_LIBRARY_FILES
 
