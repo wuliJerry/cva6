@@ -15,9 +15,15 @@
 
 #include "encoding.h"
 
-#define MULHU_INTERVAL 10000          // N parameter: 1 MULHU every N MULs
-#define OUTER_LOOPS    100            // Number of times to repeat the pattern
-#define TOTAL_MULS     (MULHU_INTERVAL * OUTER_LOOPS)  // Total MUL operations
+#ifndef MULHU_INTERVAL
+#define MULHU_INTERVAL 10000          // N parameter: 1 MULHU every N MULs (default)
+#endif
+
+// Keep total multiply operations (MUL + MULHU) constant across all configurations
+// Total target = 1,000,000 multiply operations
+// Each outer iteration does: MULHU_INTERVAL MULs + 1 MULHU
+#define TARGET_TOTAL_OPS 1000000
+#define OUTER_LOOPS      (TARGET_TOTAL_OPS / MULHU_INTERVAL)
 
     .section .text.init
     .globl _start
@@ -37,8 +43,9 @@ _start:
     li      x10, OUTER_LOOPS          // x10 = outer loop counter
 
 outer_loop:
-    // Inner loop: perform MULHU_INTERVAL MUL operations
-    li      x11, MULHU_INTERVAL       // x11 = inner loop counter
+    // Inner loop: perform (MULHU_INTERVAL - 1) MUL operations
+    // This keeps total MUL+MULHU count at exactly 1 million
+    li      x11, MULHU_INTERVAL - 1   // x11 = inner loop counter
 
 inner_loop:
     // Perform MUL operations
