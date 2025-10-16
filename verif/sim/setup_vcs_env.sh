@@ -15,7 +15,7 @@ export CV_SW_PREFIX=riscv64-unknown-elf-
 export SPIKE_INSTALL_DIR=/home/ruijieg/cva6/tools/spike
 
 # Load VCS (if not already loaded)
-module load veridi vcs 2>/dev/null || true
+module load verdi vcs 2>/dev/null || true
 
 export 
 

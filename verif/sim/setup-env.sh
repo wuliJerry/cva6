@@ -7,6 +7,12 @@ else
   echo "Error: Non recognized shell."
   return
 fi
+
+export VERILATOR_ROOT=/home/ruijieg/cva6/tools/verilator/build-v5.008
+export VERILATOR_INSTALL_DIR=$VERILATOR_ROOT
+export RISCV=/home/ruijieg/cva6/tools/riscv_toolchain
+export PATH=$VERILATOR_ROOT/bin:$PATH
+
 export ROOT_PROJECT=$(readlink -f $(dirname "${SCRIPT_PATH}")/../..)
 
 export RTL_PATH="$ROOT_PROJECT/"
