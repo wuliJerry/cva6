@@ -410,7 +410,7 @@ vcs-testharness:
 	  mv novas.fsdb `dirname $(log)`/`basename $(log) .log`.fsdb
 	# Generate disassembled log.
 	$(tool_path)/spike-dasm --isa=$(variant) < ./trace_rvfi_hart_00.dasm > $(log)
-	grep $(isspostrun_opts) ./trace_rvfi_hart_00.dasm
+	$(if $(isspostrun_opts),grep $(isspostrun_opts) ./trace_rvfi_hart_00.dasm,@echo "[INFO] Skipping grep (isspostrun_opts not set)")
 
 veri-testharness-pk:
 	rm -rf $(path_var)/work-ver
@@ -426,7 +426,7 @@ veri-testharness-pk:
 	[ ! -f verilator.vcd ] || mv verilator.vcd `dirname $(log)`/`basename $(log) .log`.vcd
 	# Generate disassembled log.
 	$(tool_path)/spike-dasm --isa=$(variant) < ./trace_rvfi_hart_00.dasm > $(log)
-	grep $(isspostrun_opts) ./trace_rvfi_hart_00.dasm
+	$(if $(isspostrun_opts),grep $(isspostrun_opts) ./trace_rvfi_hart_00.dasm,@echo "[INFO] Skipping grep (isspostrun_opts not set)")
 
 veri-testharness:
 	make -C $(path_var) verilate verilator="verilator --no-timing" target=$(target) defines=$(subst +define+,,$(isscomp_opts))
@@ -438,7 +438,7 @@ veri-testharness:
 	[ ! -f verilator.vcd ] || mv verilator.vcd `dirname $(log)`/`basename $(log) .log`.vcd
 	# Generate disassembled log.
 	$(tool_path)/spike-dasm --isa=$(variant) < ./trace_rvfi_hart_00.dasm > $(log)
-	grep $(isspostrun_opts) ./trace_rvfi_hart_00.dasm
+	$(if $(isspostrun_opts),grep $(isspostrun_opts) ./trace_rvfi_hart_00.dasm,@echo "[INFO] Skipping grep (isspostrun_opts not set)")
 
 xrun-testharness:
 	@echo "[XRUN-TESTHARNESS] Running"
@@ -458,7 +458,7 @@ questa-testharness:
 	    report_file=$(log).yaml $(spike-yaml-makearg)
 	# TODO: Add support for waveform collection.
 	$(tool_path)/spike-dasm --isa=$(variant) < $(path_var)/trace_rvfi_hart_00.dasm > $(log)
-	grep $(isspostrun_opts) $(path_var)/trace_rvfi_hart_00.dasm
+	$(if $(isspostrun_opts),grep $(isspostrun_opts) $(path_var)/trace_rvfi_hart_00.dasm,@echo "[INFO] Skipping grep (isspostrun_opts not set)")
 
 ###############################################################################
 # Common targets and rules
