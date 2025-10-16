@@ -729,6 +729,18 @@ module ariane_testharness #(
     .end_of_test_o(tracer_exit)
   );
 
+  // Performance counter logger
+  perf_counter_logger #(
+    .CVA6Cfg(CVA6Cfg),
+    .rvfi_csr_t(rvfi_csr_t),
+    .HART_ID(hart_id)
+  ) i_perf_counter_logger (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .rvfi_csr_i(rvfi_csr),
+    .end_of_test_i(tracer_exit)
+  );
+
 `ifdef SPIKE_TANDEM
     spike #(
         .CVA6Cfg ( CVA6Cfg ),

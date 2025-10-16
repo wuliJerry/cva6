@@ -158,6 +158,18 @@ module cva6_tb_wrapper import uvmt_cva6_pkg::*; #(
     .end_of_test_o(tb_exit_o)
   ) ;
 
+  // Performance counter logger
+  perf_counter_logger #(
+    .CVA6Cfg(CVA6Cfg),
+    .rvfi_csr_t(rvfi_csr_t),
+    .HART_ID(8'h0)
+  ) i_perf_counter_logger (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .rvfi_csr_i(rvfi_csr),
+    .end_of_test_i(tb_exit_o)
+  );
+
   //----------------------------------------------------------------------------
   // Memory
   //----------------------------------------------------------------------------

@@ -71,11 +71,22 @@ module instr_tracer #(
   // address mapping
   // contains mappings of the form vaddr <-> paddr
   logic [63:0] store_mapping[$], load_mapping[$], address_mapping;
+  // trace enable flag
+  logic trace_enabled;
 
   // static uvm_cmdline_processor uvcl = uvm_cmdline_processor::get_inst();
 
   function void create_file(logic [63:0] hart_id);
     string fn, fn_commit_log;
+
+    // Check if instruction tracing should be disabled
+    if ($test$plusargs("instr_trace_disable")) begin
+      trace_enabled = 1'b0;
+      $display("[TRACER] Instruction tracing disabled via +instr_trace_disable");
+      return;
+    end
+
+    trace_enabled = 1'b1;
     $sformat(fn, "trace_hart_%0.0f.log", hart_id);
     $sformat(fn_commit_log, "trace_hart_%0.0f_commit.log", hart_id);
     $display("[TRACER] Output filename is: %s", fn);
@@ -229,9 +240,15 @@ module instr_tracer #(
       .CVA6Cfg(CVA6Cfg),
       .bp_resolve_t(bp_resolve_t),
       .scoreboard_entry_t(scoreboard_entry_t)
-    ) iti = new ($time, clk_ticks, sbe, instr, gp_reg_file, fp_reg_file, result, paddr, priv_lvl, debug_mode, bp);
+    ) iti;
+    automatic string print_instr;
+
+    // Skip if tracing is disabled
+    if (!trace_enabled) return;
+
+    iti = new ($time, clk_ticks, sbe, instr, gp_reg_file, fp_reg_file, result, paddr, priv_lvl, debug_mode, bp);
     // print instruction to console
-    automatic string print_instr = iti.printInstr();
+    print_instr = iti.printInstr();
     if (ariane_pkg::ENABLE_SPIKE_COMMIT_LOG && !debug_mode) begin
       $fwrite(commit_log, riscv::spikeCommitLog(sbe.pc, priv_lvl, instr, sbe.rd, result, ariane_pkg::is_rd_fpr(sbe.op)));
     end
@@ -243,8 +260,14 @@ module instr_tracer #(
       .CVA6Cfg(CVA6Cfg),
       .interrupts_t(interrupts_t),
       .INTERRUPTS(INTERRUPTS)
-    ) eti = new (pc, cause, tval);
-    automatic string print_ex = eti.printException();
+    ) eti;
+    automatic string print_ex;
+
+    // Skip if tracing is disabled
+    if (!trace_enabled) return;
+
+    eti = new (pc, cause, tval);
+    print_ex = eti.printException();
     $fwrite(f, {print_ex, "\n"});
   endfunction
 
