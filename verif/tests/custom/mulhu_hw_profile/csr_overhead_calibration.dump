@@ -1,0 +1,46 @@
+
+csr_overhead_calibration.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000080000000 <_start>:
+    80000000:	00002a37          	lui	s4,0x2
+    80000004:	710a0a1b          	addiw	s4,s4,1808 # 2710 <_start-0x7fffd8f0>
+    80000008:	00000b13          	li	s6,0
+    8000000c:	00000b93          	li	s7,0
+    80000010:	b0002e73          	csrr	t3,mcycle
+    80000014:	b0202ef3          	csrr	t4,minstret
+
+0000000080000018 <calibration_loop>:
+    80000018:	b0002c73          	csrr	s8,mcycle
+    8000001c:	00000013          	nop
+    80000020:	b0002cf3          	csrr	s9,mcycle
+    80000024:	418c8cb3          	sub	s9,s9,s8
+    80000028:	019b0b33          	add	s6,s6,s9
+    8000002c:	001b8b93          	addi	s7,s7,1
+    80000030:	fffa0a13          	addi	s4,s4,-1
+    80000034:	fe0a12e3          	bnez	s4,80000018 <calibration_loop>
+    80000038:	b0002f73          	csrr	t5,mcycle
+    8000003c:	b0202ff3          	csrr	t6,minstret
+    80000040:	00002417          	auipc	s0,0x2
+    80000044:	fc040413          	addi	s0,s0,-64 # 80002000 <profiling_data>
+    80000048:	01743023          	sd	s7,0(s0)
+    8000004c:	01643423          	sd	s6,8(s0)
+    80000050:	41cf04b3          	sub	s1,t5,t3
+    80000054:	00943823          	sd	s1,16(s0)
+    80000058:	037b4d33          	div	s10,s6,s7
+    8000005c:	01a43c23          	sd	s10,24(s0)
+    80000060:	41df8db3          	sub	s11,t6,t4
+    80000064:	03b43023          	sd	s11,32(s0)
+    80000068:	06400213          	li	tp,100
+    8000006c:	024b0233          	mul	tp,s6,tp
+    80000070:	02924233          	div	tp,tp,s1
+    80000074:	02443423          	sd	tp,40(s0)
+    80000078:	00001417          	auipc	s0,0x1
+    8000007c:	f8840413          	addi	s0,s0,-120 # 80001000 <tohost>
+    80000080:	00100493          	li	s1,1
+    80000084:	00943023          	sd	s1,0(s0)
+
+0000000080000088 <done>:
+    80000088:	0000006f          	j	80000088 <done>

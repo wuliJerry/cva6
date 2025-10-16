@@ -1,0 +1,75 @@
+
+mulhu_dependent_chain.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000080000000 <_start>:
+    80000000:	002472b7          	lui	t0,0x247
+    80000004:	8ad2829b          	addiw	t0,t0,-1875 # 2468ad <_start-0x7fdb9753>
+    80000008:	00e29293          	slli	t0,t0,0xe
+    8000000c:	c4d28293          	addi	t0,t0,-947
+    80000010:	00c29293          	slli	t0,t0,0xc
+    80000014:	5e728293          	addi	t0,t0,1511
+    80000018:	00d29293          	slli	t0,t0,0xd
+    8000001c:	ef028293          	addi	t0,t0,-272
+    80000020:	001fe337          	lui	t1,0x1fe
+    80000024:	b973031b          	addiw	t1,t1,-1129 # 1fdb97 <_start-0x7fe02469>
+    80000028:	00c31313          	slli	t1,t1,0xc
+    8000002c:	53130313          	addi	t1,t1,1329
+    80000030:	00d31313          	slli	t1,t1,0xd
+    80000034:	d9530313          	addi	t1,t1,-619
+    80000038:	00e31313          	slli	t1,t1,0xe
+    8000003c:	32130313          	addi	t1,t1,801
+    80000040:	00000393          	li	t2,0
+    80000044:	3e800a13          	li	s4,1000
+    80000048:	00000b13          	li	s6,0
+    8000004c:	00000b93          	li	s7,0
+    80000050:	b0002e73          	csrr	t3,mcycle
+    80000054:	b0202ef3          	csrr	t4,minstret
+
+0000000080000058 <test_loop>:
+    80000058:	01128293          	addi	t0,t0,17
+    8000005c:	0a534313          	xori	t1,t1,165
+    80000060:	b0002c73          	csrr	s8,mcycle
+    80000064:	0262b6b3          	mulhu	a3,t0,t1
+    80000068:	0266b733          	mulhu	a4,a3,t1
+    8000006c:	026737b3          	mulhu	a5,a4,t1
+    80000070:	0267b833          	mulhu	a6,a5,t1
+    80000074:	026838b3          	mulhu	a7,a6,t1
+    80000078:	0268b933          	mulhu	s2,a7,t1
+    8000007c:	026939b3          	mulhu	s3,s2,t1
+    80000080:	0269b533          	mulhu	a0,s3,t1
+    80000084:	026535b3          	mulhu	a1,a0,t1
+    80000088:	0265b633          	mulhu	a2,a1,t1
+    8000008c:	b0002cf3          	csrr	s9,mcycle
+    80000090:	418c8cb3          	sub	s9,s9,s8
+    80000094:	019b0b33          	add	s6,s6,s9
+    80000098:	001b8b93          	addi	s7,s7,1
+    8000009c:	00c383b3          	add	t2,t2,a2
+    800000a0:	fffa0a13          	addi	s4,s4,-1
+    800000a4:	fa0a1ae3          	bnez	s4,80000058 <test_loop>
+    800000a8:	b0002f73          	csrr	t5,mcycle
+    800000ac:	b0202ff3          	csrr	t6,minstret
+    800000b0:	00002417          	auipc	s0,0x2
+    800000b4:	f5040413          	addi	s0,s0,-176 # 80002000 <profiling_data>
+    800000b8:	01743023          	sd	s7,0(s0)
+    800000bc:	01643423          	sd	s6,8(s0)
+    800000c0:	41cf04b3          	sub	s1,t5,t3
+    800000c4:	00943823          	sd	s1,16(s0)
+    800000c8:	037b4d33          	div	s10,s6,s7
+    800000cc:	01a43c23          	sd	s10,24(s0)
+    800000d0:	00a00d93          	li	s11,10
+    800000d4:	03bd4d33          	div	s10,s10,s11
+    800000d8:	03a43023          	sd	s10,32(s0)
+    800000dc:	06400d93          	li	s11,100
+    800000e0:	03bb0db3          	mul	s11,s6,s11
+    800000e4:	029dcdb3          	div	s11,s11,s1
+    800000e8:	03b43423          	sd	s11,40(s0)
+    800000ec:	00001417          	auipc	s0,0x1
+    800000f0:	f1440413          	addi	s0,s0,-236 # 80001000 <tohost>
+    800000f4:	00100493          	li	s1,1
+    800000f8:	00943023          	sd	s1,0(s0)
+
+00000000800000fc <done>:
+    800000fc:	0000006f          	j	800000fc <done>
