@@ -1,26 +1,21 @@
-# MULHU Software Implementation Sweep Benchmark
-# Tests performance impact of software MULHU vs hardware multiply
-# Sweeps N ∈ {10000, 1000, 100, 10} for MULHU frequency
+# Simple Software MULHU Sweep - 1000 Operations (N=10)
+# Exactly the same code as mulhu_soft_sweep but with smaller total count
+# This is for quick testing to verify the register allocation fix works
 
 .section .text.init
 .globl _start
 .option norvc
 
-#ifndef MULHU_INTERVAL
-#define MULHU_INTERVAL 10000          // N parameter - number of MULs per MULHU (default)
-#endif
-
-// Keep total multiply operations (MUL + MULHU) constant across all configurations
-// Total target = 1,000,000 multiply operations
-#define TARGET_TOTAL_OPS 1000000
-#define OUTER_LOOPS      (TARGET_TOTAL_OPS / MULHU_INTERVAL)
+#define MULHU_INTERVAL 10             // N=10 (10% MULHU frequency)
+#define TARGET_TOTAL_OPS 1000         // Only 1000 total ops instead of 1M
+#define OUTER_LOOPS (TARGET_TOTAL_OPS / MULHU_INTERVAL)  // = 100 iterations
 
 _start:
-    # Initialize test data
+    # Initialize test data (EXACT SAME as mulhu_soft_sweep)
     li      x5, 0x123456789ABCDEF0    # Test operand 1
     li      x6, 0x0FEDCBA987654321    # Test operand 2
     li      x7, 0                     # Accumulator
-    li      x20, OUTER_LOOPS          # Outer loop counter (use s4, not a0!)
+    li      x20, OUTER_LOOPS          # Outer loop counter = 100 (use s4, not a0!)
     li      x21, MULHU_INTERVAL - 1   # Inner loop constant (save in s5, reload each iteration)
 
     # Capture start performance counters

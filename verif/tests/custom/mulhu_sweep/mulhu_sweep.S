@@ -34,18 +34,17 @@ _start:
     li      x5, 0x123456789ABCDEF0    // Test operand 1
     li      x6, 0x0FEDCBA987654321    // Test operand 2
     li      x7, 0                     // Accumulator for results (prevent optimization)
+    li      x10, OUTER_LOOPS          // x10 = outer loop counter
+    li      x20, MULHU_INTERVAL - 1   // x20 = inner loop constant (s4 register)
 
     // Read initial mcycle
     csrr    x28, mcycle               // x28 = start cycle count
     csrr    x29, minstret             // x29 = start instruction count
 
-    // Main benchmark loop
-    li      x10, OUTER_LOOPS          // x10 = outer loop counter
-
 outer_loop:
     // Inner loop: perform (MULHU_INTERVAL - 1) MUL operations
     // This keeps total MUL+MULHU count at exactly 1 million
-    li      x11, MULHU_INTERVAL - 1   // x11 = inner loop counter
+    mv      x11, x20                  // Reload inner loop counter (1 instruction always!)
 
 inner_loop:
     // Perform MUL operations
