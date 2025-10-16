@@ -27,9 +27,27 @@ _start:
     li      x22, 0                    # s6 (x22) = mulhu_total_cycles
     li      x23, 0                    # s7 (x23) = mulhu_call_count
 
+    # Configure HPM counters (mhpmcounter3-6)
+    # mhpmevent3 = 0x01 (I-cache miss)
+    # mhpmevent4 = 0x0A (Branch mispredict)
+    # mhpmevent5 = 0x0C (Function calls)
+    # mhpmevent6 = 0x10 (I-cache access)
+    li      t0, 0x01
+    csrw    0x323, t0                 # mhpmevent3 = I-cache miss
+    li      t0, 0x0A
+    csrw    0x324, t0                 # mhpmevent4 = Branch mispredict
+    li      t0, 0x0C
+    csrw    0x325, t0                 # mhpmevent5 = Function calls
+    li      t0, 0x10
+    csrw    0x326, t0                 # mhpmevent6 = I-cache access
+
     # Capture start performance counters
-    csrr    x28, 0xB00                # mcycle - start cycle count
-    csrr    x29, 0xB02                # minstret - start instruction count
+    csrr    x28, 0xB00                # t3 (x28) = mcycle start
+    csrr    x29, 0xB02                # t4 (x29) = minstret start
+    csrr    x30, 0xB03                # t5 (x30) = mhpmcounter3 start (I-cache misses)
+    csrr    x31, 0xB04                # t6 (x31) = mhpmcounter4 start (branch mispredicts)
+    csrr    s2, 0xB05                 # s2 (x18) = mhpmcounter5 start (function calls)
+    csrr    s3, 0xB06                 # s3 (x19) = mhpmcounter6 start (I-cache accesses)
 
 outer_loop:
     mv      x11, x21                  # Reload inner loop counter from constant (1 instruction always!)
@@ -64,14 +82,24 @@ inner_loop:
     bnez    x20, outer_loop           # Continue outer loop
 
     # Capture end performance counters
-    csrr    x30, 0xB00                # mcycle - end cycle count
-    csrr    x31, 0xB02                # minstret - end instruction count
+    csrr    s8, 0xB00                 # s8 = mcycle end
+    csrr    s9, 0xB02                 # s9 = minstret end
+    csrr    t0, 0xB03                 # t0 = mhpmcounter3 end (I-cache misses)
+    csrr    t1, 0xB04                 # t1 = mhpmcounter4 end (branch mispredicts)
+    csrr    t2, 0xB05                 # t2 = mhpmcounter5 end (function calls)
+    csrr    t3, 0xB06                 # t3 = mhpmcounter6 end (I-cache accesses)
+
+    # Calculate HPM deltas
+    sub     t0, t0, x30               # Delta I-cache misses (end - start)
+    sub     t1, t1, x31               # Delta branch mispredicts (end - start)
+    sub     t2, t2, s2                # Delta function calls (end - start)
+    sub     t3, t3, s3                # Delta I-cache accesses (end - start)
 
     # Store profiling results in memory for extraction
     la      x8, profiling_data
     sd      x23, 0(x8)                # Store call_count
     sd      x22, 8(x8)                # Store total_cycles
-    sub     x9, x30, x28              # Total program cycles
+    sub     x9, s8, x28               # Total program cycles (end - start)
     sd      x9, 16(x8)                # Store total_program_cycles
 
     # Calculate average cycles per call: total_cycles / call_count
@@ -79,11 +107,32 @@ inner_loop:
     div     x26, x22, x23
     sd      x26, 24(x8)               # Store avg_cycles_per_call
 
-    # Calculate percentage: (mulhu_cycles * 100) / total_cycles
-    li      x27, 100
-    mul     x27, x22, x27
-    div     x27, x27, x9
-    sd      x27, 32(x8)               # Store percentage_of_total
+    # Store HPM metrics at offset 0x20-0x48
+    sd      t0, 32(x8)                # Store icache_misses (0x20)
+    sd      t1, 40(x8)                # Store branch_mispredicts (0x28)
+    sd      t2, 48(x8)                # Store call_count_hpm (0x30)
+    sd      t3, 56(x8)                # Store icache_accesses (0x38)
+
+    # Calculate I-cache miss rate: (misses * 100) / accesses
+    beqz    t3, skip_miss_rate        # Avoid divide by zero
+    li      t4, 100
+    mul     t4, t0, t4
+    div     t4, t4, t3
+    sd      t4, 64(x8)                # Store icache_miss_rate (0x40)
+    j       calc_mispredicts
+skip_miss_rate:
+    sd      zero, 64(x8)              # Store 0 if no accesses
+
+calc_mispredicts:
+    # Calculate mispredicts per call: mispredicts / call_count
+    beqz    x23, skip_mispredicts     # Avoid divide by zero
+    div     t5, t1, x23
+    sd      t5, 72(x8)                # Store mispredicts_per_call (0x48)
+    j       test_complete
+skip_mispredicts:
+    sd      zero, 72(x8)              # Store 0 if no calls
+
+test_complete:
 
     # Write result to tohost to signal completion
     la      x8, tohost
@@ -129,11 +178,16 @@ __mulhu64_soft:
 .section .data
 .align 3
 profiling_data:
-    .dword 0    # call_count
-    .dword 0    # total_cycles
-    .dword 0    # total_program_cycles
-    .dword 0    # avg_cycles_per_call
-    .dword 0    # percentage_of_total
+    .dword 0    # call_count (0x00)
+    .dword 0    # total_cycles (0x08)
+    .dword 0    # total_program_cycles (0x10)
+    .dword 0    # avg_cycles_per_call (0x18)
+    .dword 0    # icache_misses (0x20)
+    .dword 0    # branch_mispredicts (0x28)
+    .dword 0    # call_count_hpm (0x30)
+    .dword 0    # icache_accesses (0x38)
+    .dword 0    # icache_miss_rate (0x40)
+    .dword 0    # mispredicts_per_call (0x48)
 
 .section .tohost
 .align 6

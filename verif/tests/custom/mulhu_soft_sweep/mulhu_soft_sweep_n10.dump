@@ -1,0 +1,140 @@
+
+mulhu_soft_sweep_n10.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000080000000 <_start>:
+    80000000:	002472b7          	lui	t0,0x247
+    80000004:	8ad2829b          	addiw	t0,t0,-1875 # 2468ad <_start-0x7fdb9753>
+    80000008:	00e29293          	slli	t0,t0,0xe
+    8000000c:	c4d28293          	addi	t0,t0,-947
+    80000010:	00c29293          	slli	t0,t0,0xc
+    80000014:	5e728293          	addi	t0,t0,1511
+    80000018:	00d29293          	slli	t0,t0,0xd
+    8000001c:	ef028293          	addi	t0,t0,-272
+    80000020:	001fe337          	lui	t1,0x1fe
+    80000024:	b973031b          	addiw	t1,t1,-1129 # 1fdb97 <_start-0x7fe02469>
+    80000028:	00c31313          	slli	t1,t1,0xc
+    8000002c:	53130313          	addi	t1,t1,1329
+    80000030:	00d31313          	slli	t1,t1,0xd
+    80000034:	d9530313          	addi	t1,t1,-619
+    80000038:	00e31313          	slli	t1,t1,0xe
+    8000003c:	32130313          	addi	t1,t1,801
+    80000040:	00000393          	li	t2,0
+    80000044:	00018a37          	lui	s4,0x18
+    80000048:	6a0a0a1b          	addiw	s4,s4,1696 # 186a0 <_start-0x7ffe7960>
+    8000004c:	00900a93          	li	s5,9
+    80000050:	00000b13          	li	s6,0
+    80000054:	00000b93          	li	s7,0
+    80000058:	00100293          	li	t0,1
+    8000005c:	32329073          	csrw	mhpmevent3,t0
+    80000060:	00a00293          	li	t0,10
+    80000064:	32429073          	csrw	mhpmevent4,t0
+    80000068:	00c00293          	li	t0,12
+    8000006c:	32529073          	csrw	mhpmevent5,t0
+    80000070:	01000293          	li	t0,16
+    80000074:	32629073          	csrw	mhpmevent6,t0
+    80000078:	b0002e73          	csrr	t3,mcycle
+    8000007c:	b0202ef3          	csrr	t4,minstret
+    80000080:	b0302f73          	csrr	t5,mhpmcounter3
+    80000084:	b0402ff3          	csrr	t6,mhpmcounter4
+    80000088:	b0502973          	csrr	s2,mhpmcounter5
+    8000008c:	b06029f3          	csrr	s3,mhpmcounter6
+
+0000000080000090 <outer_loop>:
+    80000090:	000a8593          	mv	a1,s5
+
+0000000080000094 <inner_loop>:
+    80000094:	02628633          	mul	a2,t0,t1
+    80000098:	00c383b3          	add	t2,t2,a2
+    8000009c:	01128293          	addi	t0,t0,17
+    800000a0:	05a34313          	xori	t1,t1,90
+    800000a4:	fff58593          	addi	a1,a1,-1
+    800000a8:	fe0596e3          	bnez	a1,80000094 <inner_loop>
+    800000ac:	b0002c73          	csrr	s8,mcycle
+    800000b0:	00028513          	mv	a0,t0
+    800000b4:	00030593          	mv	a1,t1
+    800000b8:	00000097          	auipc	ra,0x0
+    800000bc:	0c8080e7          	jalr	200(ra) # 80000180 <__mulhu64_soft>
+    800000c0:	b0002cf3          	csrr	s9,mcycle
+    800000c4:	418c8cb3          	sub	s9,s9,s8
+    800000c8:	019b0b33          	add	s6,s6,s9
+    800000cc:	001b8b93          	addi	s7,s7,1
+    800000d0:	00a383b3          	add	t2,t2,a0
+    800000d4:	01728293          	addi	t0,t0,23
+    800000d8:	0a534313          	xori	t1,t1,165
+    800000dc:	fffa0a13          	addi	s4,s4,-1
+    800000e0:	fa0a18e3          	bnez	s4,80000090 <outer_loop>
+    800000e4:	b0002c73          	csrr	s8,mcycle
+    800000e8:	b0202cf3          	csrr	s9,minstret
+    800000ec:	b03022f3          	csrr	t0,mhpmcounter3
+    800000f0:	b0402373          	csrr	t1,mhpmcounter4
+    800000f4:	b05023f3          	csrr	t2,mhpmcounter5
+    800000f8:	b0602e73          	csrr	t3,mhpmcounter6
+    800000fc:	41e282b3          	sub	t0,t0,t5
+    80000100:	41f30333          	sub	t1,t1,t6
+    80000104:	412383b3          	sub	t2,t2,s2
+    80000108:	413e0e33          	sub	t3,t3,s3
+    8000010c:	00002417          	auipc	s0,0x2
+    80000110:	ef440413          	addi	s0,s0,-268 # 80002000 <profiling_data>
+    80000114:	01743023          	sd	s7,0(s0)
+    80000118:	01643423          	sd	s6,8(s0)
+    8000011c:	41cc04b3          	sub	s1,s8,t3
+    80000120:	00943823          	sd	s1,16(s0)
+    80000124:	037b4d33          	div	s10,s6,s7
+    80000128:	01a43c23          	sd	s10,24(s0)
+    8000012c:	02543023          	sd	t0,32(s0)
+    80000130:	02643423          	sd	t1,40(s0)
+    80000134:	02743823          	sd	t2,48(s0)
+    80000138:	03c43c23          	sd	t3,56(s0)
+    8000013c:	000e0c63          	beqz	t3,80000154 <skip_miss_rate>
+    80000140:	06400e93          	li	t4,100
+    80000144:	03d28eb3          	mul	t4,t0,t4
+    80000148:	03ceceb3          	div	t4,t4,t3
+    8000014c:	05d43023          	sd	t4,64(s0)
+    80000150:	0080006f          	j	80000158 <calc_mispredicts>
+
+0000000080000154 <skip_miss_rate>:
+    80000154:	04043023          	sd	zero,64(s0)
+
+0000000080000158 <calc_mispredicts>:
+    80000158:	000b8863          	beqz	s7,80000168 <skip_mispredicts>
+    8000015c:	03734f33          	div	t5,t1,s7
+    80000160:	05e43423          	sd	t5,72(s0)
+    80000164:	0080006f          	j	8000016c <test_complete>
+
+0000000080000168 <skip_mispredicts>:
+    80000168:	04043423          	sd	zero,72(s0)
+
+000000008000016c <test_complete>:
+    8000016c:	00001417          	auipc	s0,0x1
+    80000170:	e9440413          	addi	s0,s0,-364 # 80001000 <tohost>
+    80000174:	00100493          	li	s1,1
+    80000178:	00943023          	sd	s1,0(s0)
+
+000000008000017c <done>:
+    8000017c:	0000006f          	j	8000017c <done>
+
+0000000080000180 <__mulhu64_soft>:
+    80000180:	02055313          	srli	t1,a0,0x20
+    80000184:	fff00e93          	li	t4,-1
+    80000188:	020ede93          	srli	t4,t4,0x20
+    8000018c:	01d572b3          	and	t0,a0,t4
+    80000190:	0205de13          	srli	t3,a1,0x20
+    80000194:	01d5f3b3          	and	t2,a1,t4
+    80000198:	02728eb3          	mul	t4,t0,t2
+    8000019c:	03c28f33          	mul	t5,t0,t3
+    800001a0:	02730fb3          	mul	t6,t1,t2
+    800001a4:	03c30533          	mul	a0,t1,t3
+    800001a8:	020ed293          	srli	t0,t4,0x20
+    800001ac:	005f0f33          	add	t5,t5,t0
+    800001b0:	005f32b3          	sltu	t0,t5,t0
+    800001b4:	01ff0333          	add	t1,t5,t6
+    800001b8:	01f333b3          	sltu	t2,t1,t6
+    800001bc:	007282b3          	add	t0,t0,t2
+    800001c0:	02029293          	slli	t0,t0,0x20
+    800001c4:	02035313          	srli	t1,t1,0x20
+    800001c8:	0062e2b3          	or	t0,t0,t1
+    800001cc:	00550533          	add	a0,a0,t0
+    800001d0:	00008067          	ret

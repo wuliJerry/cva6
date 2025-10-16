@@ -18,12 +18,15 @@ CFLAGS += -O2
 LDFLAGS = -T$(LINK_DIR)/link.ld
 
 ASM_SRC = mulhu_soft_simple.S
+ASM_SRC_1K = mulhu_soft_simple_1k.S
 TARGET = mulhu_soft_simple.elf
+TARGET_1K = mulhu_soft_simple_1k.elf
 DUMP = mulhu_soft_simple.dump
+DUMP_1K = mulhu_soft_simple_1k.dump
 
-.PHONY: all clean disasm check
+.PHONY: all clean disasm check 1k
 
-all: $(TARGET) disasm
+all: $(TARGET) $(TARGET_1K) disasm
 
 $(TARGET): $(ASM_SRC)
 	$(RISCV_GCC) $(CFLAGS) $(LDFLAGS) $(ASM_SRC) -o $(TARGET) -lgcc
@@ -31,9 +34,21 @@ $(TARGET): $(ASM_SRC)
 	@echo "Built: $(TARGET)"
 	@echo ""
 
-disasm: $(TARGET)
+$(TARGET_1K): $(ASM_SRC_1K)
+	$(RISCV_GCC) $(CFLAGS) $(LDFLAGS) $(ASM_SRC_1K) -o $(TARGET_1K) -lgcc
+	@echo ""
+	@echo "Built: $(TARGET_1K)"
+	@echo ""
+
+1k: $(TARGET_1K)
+	$(RISCV_OBJDUMP) -d $(TARGET_1K) > $(DUMP_1K)
+	@echo "Disassembly written to $(DUMP_1K)"
+
+disasm: $(TARGET) $(TARGET_1K)
 	$(RISCV_OBJDUMP) -d $(TARGET) > $(DUMP)
 	@echo "Disassembly written to $(DUMP)"
+	$(RISCV_OBJDUMP) -d $(TARGET_1K) > $(DUMP_1K)
+	@echo "Disassembly written to $(DUMP_1K)"
 
 # Show expected results for verification
 check:

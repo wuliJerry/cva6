@@ -18,14 +18,23 @@ module function_profiler #(
     input  logic [63:0] mem_wdata_i
 );
 
-    // Profiling data storage
+    // Profiling data storage - Basic fields
     logic [63:0] call_count;
     logic [63:0] total_cycles;
     logic [63:0] total_program_cycles;
     logic [63:0] avg_cycles_per_call;
     logic [63:0] percentage_of_total;
 
+    // HPM fields (optional - only for HPM-enabled benchmarks)
+    logic [63:0] icache_misses;
+    logic [63:0] branch_mispredicts;
+    logic [63:0] call_count_hpm;
+    logic [63:0] icache_accesses;
+    logic [63:0] icache_miss_rate;
+    logic [63:0] mispredicts_per_call;
+
     logic profiling_captured;
+    logic hpm_enabled;
     logic prof_log_enabled;
     string perf_log_file;
     integer log_file;
@@ -54,7 +63,14 @@ module function_profiler #(
             total_program_cycles <= 0;
             avg_cycles_per_call <= 0;
             percentage_of_total <= 0;
+            icache_misses <= 0;
+            branch_mispredicts <= 0;
+            call_count_hpm <= 0;
+            icache_accesses <= 0;
+            icache_miss_rate <= 0;
+            mispredicts_per_call <= 0;
             profiling_captured <= 1'b0;
+            hpm_enabled <= 1'b0;
         end else begin
             if (mem_valid_i && mem_we_i) begin
                 case (mem_addr_i)
@@ -69,14 +85,43 @@ module function_profiler #(
                     PROFILING_ADDR + 64'h10: begin
                         total_program_cycles <= mem_wdata_i;
                         $display("[PROFILER] Captured total_program_cycles = %0d", mem_wdata_i);
+                        // Calculate percentage automatically to avoid memory layout issues
+                        if (total_program_cycles > 0 && total_cycles > 0) begin
+                            percentage_of_total <= (total_cycles * 100) / total_program_cycles;
+                        end
                     end
                     PROFILING_ADDR + 64'h18: begin
                         avg_cycles_per_call <= mem_wdata_i;
                         $display("[PROFILER] Captured avg_cycles_per_call = %0d", mem_wdata_i);
+                        // If no HPM fields follow, mark as captured here
+                        if (!hpm_enabled) begin
+                            profiling_captured <= 1'b1;
+                        end
                     end
                     PROFILING_ADDR + 64'h20: begin
-                        percentage_of_total <= mem_wdata_i;
-                        $display("[PROFILER] Captured percentage_of_total = %0d%%", mem_wdata_i);
+                        icache_misses <= mem_wdata_i;
+                        $display("[PROFILER] Captured icache_misses = %0d", mem_wdata_i);
+                        hpm_enabled <= 1'b1;
+                    end
+                    PROFILING_ADDR + 64'h28: begin
+                        branch_mispredicts <= mem_wdata_i;
+                        $display("[PROFILER] Captured branch_mispredicts = %0d", mem_wdata_i);
+                    end
+                    PROFILING_ADDR + 64'h30: begin
+                        call_count_hpm <= mem_wdata_i;
+                        $display("[PROFILER] Captured call_count_hpm = %0d", mem_wdata_i);
+                    end
+                    PROFILING_ADDR + 64'h38: begin
+                        icache_accesses <= mem_wdata_i;
+                        $display("[PROFILER] Captured icache_accesses = %0d", mem_wdata_i);
+                    end
+                    PROFILING_ADDR + 64'h40: begin
+                        icache_miss_rate <= mem_wdata_i;
+                        $display("[PROFILER] Captured icache_miss_rate = %0d%%", mem_wdata_i);
+                    end
+                    PROFILING_ADDR + 64'h48: begin
+                        mispredicts_per_call <= mem_wdata_i;
+                        $display("[PROFILER] Captured mispredicts_per_call = %0d", mem_wdata_i);
                         profiling_captured <= 1'b1;
                     end
                 endcase
@@ -100,6 +145,22 @@ module function_profiler #(
                 $fwrite(log_file, "Total Program Cycles:   %0d\n", total_program_cycles);
                 $fwrite(log_file, "Avg Cycles per Call:    %0d\n", avg_cycles_per_call);
                 $fwrite(log_file, "Percentage of Total:    %0d%%\n", percentage_of_total);
+
+                // If HPM profiling is enabled, log additional metrics
+                if (hpm_enabled) begin
+                    $fwrite(log_file, "\n");
+                    $fwrite(log_file, "--------------------------------------------------------------------------------\n");
+                    $fwrite(log_file, " HPM MICROARCHITECTURAL METRICS\n");
+                    $fwrite(log_file, "--------------------------------------------------------------------------------\n");
+                    $fwrite(log_file, "\n");
+                    $fwrite(log_file, "I-cache Misses:         %0d\n", icache_misses);
+                    $fwrite(log_file, "I-cache Accesses:       %0d\n", icache_accesses);
+                    $fwrite(log_file, "I-cache Miss Rate:      %0d%%\n", icache_miss_rate);
+                    $fwrite(log_file, "Branch Mispredicts:     %0d\n", branch_mispredicts);
+                    $fwrite(log_file, "Function Calls (HPM):   %0d\n", call_count_hpm);
+                    $fwrite(log_file, "Mispredicts per Call:   %0d\n", mispredicts_per_call);
+                end
+
                 $fwrite(log_file, "\n");
                 $fwrite(log_file, "================================================================================\n");
                 $fclose(log_file);
@@ -114,6 +175,22 @@ module function_profiler #(
                 $display("Total Program Cycles:   %0d", total_program_cycles);
                 $display("Avg Cycles per Call:    %0d", avg_cycles_per_call);
                 $display("Percentage of Total:    %0d%%", percentage_of_total);
+
+                // If HPM profiling is enabled, display additional metrics
+                if (hpm_enabled) begin
+                    $display("");
+                    $display("--------------------------------------------------------------------------------");
+                    $display(" HPM Microarchitectural Metrics");
+                    $display("--------------------------------------------------------------------------------");
+                    $display("");
+                    $display("I-cache Misses:         %0d", icache_misses);
+                    $display("I-cache Accesses:       %0d", icache_accesses);
+                    $display("I-cache Miss Rate:      %0d%%", icache_miss_rate);
+                    $display("Branch Mispredicts:     %0d", branch_mispredicts);
+                    $display("Function Calls (HPM):   %0d", call_count_hpm);
+                    $display("Mispredicts per Call:   %0d", mispredicts_per_call);
+                end
+
                 $display("");
                 $display("================================================================================");
                 $display("");
