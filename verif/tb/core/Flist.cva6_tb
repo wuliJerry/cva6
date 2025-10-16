@@ -37,6 +37,7 @@ ${CVA6_REPO_DIR}/corev_apu/tb/ariane_axi_soc_pkg.sv
 ${CVA6_REPO_DIR}/core/cva6_rvfi.sv
 ${CVA6_REPO_DIR}/corev_apu/tb/rvfi_tracer.sv
 ${CVA6_REPO_DIR}/corev_apu/tb/perf_counter_logger.sv
+${CVA6_REPO_DIR}/corev_apu/tb/function_profiler.sv
 
 // AXI master connect
 ${CVA6_TB_DIR}/tb_components/axi_master_connect.sv

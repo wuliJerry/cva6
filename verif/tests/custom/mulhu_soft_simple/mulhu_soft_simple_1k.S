@@ -18,6 +18,10 @@ _start:
     li      x20, OUTER_LOOPS          # Outer loop counter = 100 (use s4, not a0!)
     li      x21, MULHU_INTERVAL - 1   # Inner loop constant (save in s5, reload each iteration)
 
+    # Initialize function profiling counters
+    li      x22, 0                    # s6 (x22) = mulhu_total_cycles
+    li      x23, 0                    # s7 (x23) = mulhu_call_count
+
     # Capture start performance counters
     csrr    x28, 0xB00                # mcycle - start cycle count
     csrr    x29, 0xB02                # minstret - start instruction count
@@ -36,9 +40,15 @@ inner_loop:
     bnez    x11, inner_loop           # Continue inner loop
 
     # Call software MULHU implementation after N multiplies
+    # Instrument call for profiling
+    csrr    x24, 0xB00                # s8 (x24) = entry mcycle
     mv      a0, x5                    # First argument
     mv      a1, x6                    # Second argument
     call    __mulhu64_soft            # Call software MULHU
+    csrr    x25, 0xB00                # s9 (x25) = exit mcycle
+    sub     x25, x25, x24             # x25 = delta cycles
+    add     x22, x22, x25             # Accumulate total cycles in s6
+    addi    x23, x23, 1               # Increment call count in s7
     add     x7, x7, a0                # Accumulate MULHU result
 
     # Update operands for next iteration
@@ -51,6 +61,24 @@ inner_loop:
     # Capture end performance counters
     csrr    x30, 0xB00                # mcycle - end cycle count
     csrr    x31, 0xB02                # minstret - end instruction count
+
+    # Store profiling results in memory for extraction
+    la      x8, profiling_data
+    sd      x23, 0(x8)                # Store call_count
+    sd      x22, 8(x8)                # Store total_cycles
+    sub     x9, x30, x28              # Total program cycles
+    sd      x9, 16(x8)                # Store total_program_cycles
+
+    # Calculate average cycles per call: total_cycles / call_count
+    # x26 = x22 / x23
+    div     x26, x22, x23
+    sd      x26, 24(x8)               # Store avg_cycles_per_call
+
+    # Calculate percentage: (mulhu_cycles * 100) / total_cycles
+    li      x27, 100
+    mul     x27, x22, x27
+    div     x27, x27, x9
+    sd      x27, 32(x8)               # Store percentage_of_total
 
     # Write result to tohost to signal completion
     la      x8, tohost
@@ -92,6 +120,15 @@ __mulhu64_soft:
     add     a0, a0, t0                # a0 += middle contribution
 
     ret
+
+.section .data
+.align 3
+profiling_data:
+    .dword 0    # call_count
+    .dword 0    # total_cycles
+    .dword 0    # total_program_cycles
+    .dword 0    # avg_cycles_per_call
+    .dword 0    # percentage_of_total
 
 .section .tohost
 .align 6

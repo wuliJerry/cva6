@@ -741,6 +741,19 @@ module ariane_testharness #(
     .end_of_test_i(tracer_exit)
   );
 
+  // Function profiler for __mulhu64_soft
+  function_profiler #(
+    .PROFILING_ADDR(64'h80002000)
+  ) i_function_profiler (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .end_of_test_i(tracer_exit),
+    .mem_valid_i(req),
+    .mem_we_i(we),
+    .mem_addr_i(addr),
+    .mem_wdata_i(wdata)
+  );
+
 `ifdef SPIKE_TANDEM
     spike #(
         .CVA6Cfg ( CVA6Cfg ),

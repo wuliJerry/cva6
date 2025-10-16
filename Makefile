@@ -288,7 +288,7 @@ fpga_src += corev_apu/fpga/src/bootrom/bootrom_$(XLEN).sv
 fpga_src := $(addprefix $(root-dir), $(fpga_src))
 
 # look for testbenches
-tbs := $(top_level_path) corev_apu/tb/ariane_testharness.sv core/cva6_rvfi.sv corev_apu/tb/rvfi_tracer.sv corev_apu/tb/perf_counter_logger.sv
+tbs := $(top_level_path) corev_apu/tb/ariane_testharness.sv core/cva6_rvfi.sv corev_apu/tb/rvfi_tracer.sv corev_apu/tb/perf_counter_logger.sv corev_apu/tb/function_profiler.sv
 
 tbs := $(addprefix $(root-dir), $(tbs))
 
