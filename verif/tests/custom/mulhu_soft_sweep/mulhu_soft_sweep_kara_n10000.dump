@@ -1,0 +1,107 @@
+
+mulhu_soft_sweep_kara_n10000.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000080000000 <_start>:
+    80000000:	002472b7          	lui	t0,0x247
+    80000004:	8ad2829b          	addiw	t0,t0,-1875 # 2468ad <_start-0x7fdb9753>
+    80000008:	00e29293          	slli	t0,t0,0xe
+    8000000c:	c4d28293          	addi	t0,t0,-947
+    80000010:	00c29293          	slli	t0,t0,0xc
+    80000014:	5e728293          	addi	t0,t0,1511
+    80000018:	00d29293          	slli	t0,t0,0xd
+    8000001c:	ef028293          	addi	t0,t0,-272
+    80000020:	001fe337          	lui	t1,0x1fe
+    80000024:	b973031b          	addiw	t1,t1,-1129 # 1fdb97 <_start-0x7fe02469>
+    80000028:	00c31313          	slli	t1,t1,0xc
+    8000002c:	53130313          	addi	t1,t1,1329
+    80000030:	00d31313          	slli	t1,t1,0xd
+    80000034:	d9530313          	addi	t1,t1,-619
+    80000038:	00e31313          	slli	t1,t1,0xe
+    8000003c:	32130313          	addi	t1,t1,801
+    80000040:	00000393          	li	t2,0
+    80000044:	06400a13          	li	s4,100
+    80000048:	00002ab7          	lui	s5,0x2
+    8000004c:	70fa8a9b          	addiw	s5,s5,1807 # 270f <_start-0x7fffd8f1>
+    80000050:	00000b13          	li	s6,0
+    80000054:	00000b93          	li	s7,0
+    80000058:	b0002e73          	csrr	t3,mcycle
+    8000005c:	b0202ef3          	csrr	t4,minstret
+
+0000000080000060 <outer_loop>:
+    80000060:	000a8593          	mv	a1,s5
+
+0000000080000064 <inner_loop>:
+    80000064:	02628633          	mul	a2,t0,t1
+    80000068:	00c383b3          	add	t2,t2,a2
+    8000006c:	01128293          	addi	t0,t0,17
+    80000070:	05a34313          	xori	t1,t1,90
+    80000074:	fff58593          	addi	a1,a1,-1
+    80000078:	fe0596e3          	bnez	a1,80000064 <inner_loop>
+    8000007c:	b0002c73          	csrr	s8,mcycle
+    80000080:	00028513          	mv	a0,t0
+    80000084:	00030593          	mv	a1,t1
+    80000088:	00000097          	auipc	ra,0x0
+    8000008c:	068080e7          	jalr	104(ra) # 800000f0 <__mulhu64_kara>
+    80000090:	b0002cf3          	csrr	s9,mcycle
+    80000094:	418c8cb3          	sub	s9,s9,s8
+    80000098:	019b0b33          	add	s6,s6,s9
+    8000009c:	001b8b93          	addi	s7,s7,1
+    800000a0:	00a383b3          	add	t2,t2,a0
+    800000a4:	01728293          	addi	t0,t0,23
+    800000a8:	0a534313          	xori	t1,t1,165
+    800000ac:	fffa0a13          	addi	s4,s4,-1
+    800000b0:	fa0a18e3          	bnez	s4,80000060 <outer_loop>
+    800000b4:	b0002f73          	csrr	t5,mcycle
+    800000b8:	b0202ff3          	csrr	t6,minstret
+    800000bc:	00002417          	auipc	s0,0x2
+    800000c0:	f4440413          	addi	s0,s0,-188 # 80002000 <profiling_data>
+    800000c4:	01743023          	sd	s7,0(s0)
+    800000c8:	01643423          	sd	s6,8(s0)
+    800000cc:	41cf04b3          	sub	s1,t5,t3
+    800000d0:	00943823          	sd	s1,16(s0)
+    800000d4:	037b4d33          	div	s10,s6,s7
+    800000d8:	01a43c23          	sd	s10,24(s0)
+    800000dc:	00001417          	auipc	s0,0x1
+    800000e0:	f2440413          	addi	s0,s0,-220 # 80001000 <tohost>
+    800000e4:	00100493          	li	s1,1
+    800000e8:	00943023          	sd	s1,0(s0)
+
+00000000800000ec <done>:
+    800000ec:	0000006f          	j	800000ec <done>
+
+00000000800000f0 <__mulhu64_kara>:
+    800000f0:	02051293          	slli	t0,a0,0x20
+    800000f4:	0202d293          	srli	t0,t0,0x20
+    800000f8:	02055313          	srli	t1,a0,0x20
+    800000fc:	02059393          	slli	t2,a1,0x20
+    80000100:	0203d393          	srli	t2,t2,0x20
+    80000104:	0205de13          	srli	t3,a1,0x20
+    80000108:	02728eb3          	mul	t4,t0,t2
+    8000010c:	03c30f33          	mul	t5,t1,t3
+    80000110:	00628fb3          	add	t6,t0,t1
+    80000114:	01c38633          	add	a2,t2,t3
+    80000118:	02cf86b3          	mul	a3,t6,a2
+    8000011c:	b0002773          	csrr	a4,mcycle
+    80000120:	00377713          	andi	a4,a4,3
+    80000124:	41e687b3          	sub	a5,a3,t5
+    80000128:	01e6b833          	sltu	a6,a3,t5
+    8000012c:	41070733          	sub	a4,a4,a6
+    80000130:	01d7b833          	sltu	a6,a5,t4
+    80000134:	41d787b3          	sub	a5,a5,t4
+    80000138:	41070733          	sub	a4,a4,a6
+    8000013c:	0207d813          	srli	a6,a5,0x20
+    80000140:	02071893          	slli	a7,a4,0x20
+    80000144:	01186833          	or	a6,a6,a7
+    80000148:	020ed893          	srli	a7,t4,0x20
+    8000014c:	00100f9b          	addiw	t6,zero,1
+    80000150:	020f9f93          	slli	t6,t6,0x20
+    80000154:	ffff8f93          	addi	t6,t6,-1
+    80000158:	01f7ffb3          	and	t6,a5,t6
+    8000015c:	01f888b3          	add	a7,a7,t6
+    80000160:	0208d893          	srli	a7,a7,0x20
+    80000164:	010f0533          	add	a0,t5,a6
+    80000168:	01150533          	add	a0,a0,a7
+    8000016c:	00008067          	ret
