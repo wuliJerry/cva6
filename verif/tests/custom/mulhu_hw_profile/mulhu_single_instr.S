@@ -20,8 +20,8 @@ _start:
     li      x23, 0                    # s7 (x23) = mulhu_call_count
 
     # Capture start performance counters
-    csrr    x28, 0xB00                # mcycle - start cycle count
-    csrr    x29, 0xB02                # minstret - start instruction count
+    csrr    x18, 0xB00                # s2 (x18) = mcycle - start cycle count
+    csrr    x19, 0xB02                # s3 (x19) = minstret - start instruction count
 
 test_loop:
     # Update operands to vary data patterns
@@ -29,11 +29,11 @@ test_loop:
     xori    x6, x6, 0x5A              # Vary operand 2
 
     # Profile single MULHU instruction
-    csrr    x24, 0xB00                # Entry mcycle
+    csrr    x14, 0xB00                # s4 (x14) = Entry mcycle
     mulhu   x13, x5, x6               # ← HARDWARE MULHU (what we measure)
-    csrr    x25, 0xB00                # Exit mcycle
-    sub     x25, x25, x24             # Delta cycles
-    add     x22, x22, x25             # Accumulate total cycles
+    csrr    x15, 0xB00                # s5 (x15) = Exit mcycle
+    sub     x15, x15, x14             # Delta cycles
+    add     x22, x22, x15             # Accumulate total cycles
     addi    x23, x23, 1               # Increment call count
     add     x7, x7, x13               # Accumulate result
 
@@ -42,25 +42,25 @@ test_loop:
     bnez    x20, test_loop
 
     # Capture end performance counters
-    csrr    x30, 0xB00                # mcycle - end cycle count
-    csrr    x31, 0xB02                # minstret - end instruction count
+    csrr    x9, 0xB00                 # mcycle - end cycle count
+    csrr    x10, 0xB02                # minstret - end instruction count
 
     # Store profiling results in memory for extraction
     la      x8, profiling_data
     sd      x23, 0(x8)                # Store call_count
     sd      x22, 8(x8)                # Store total_cycles
-    sub     x9, x30, x28              # Total program cycles
-    sd      x9, 16(x8)                # Store total_program_cycles
+    sub     x11, x9, x18              # Total program cycles (end - start)
+    sd      x11, 16(x8)               # Store total_program_cycles
 
     # Calculate average cycles per call: total_cycles / call_count
-    div     x26, x22, x23
-    sd      x26, 24(x8)               # Store avg_cycles_per_call
+    div     x12, x22, x23
+    sd      x12, 24(x8)               # Store avg_cycles_per_call
 
     # Calculate percentage: (mulhu_cycles * 100) / total_cycles
-    li      x27, 100
-    mul     x27, x22, x27
-    div     x27, x27, x9
-    sd      x27, 32(x8)               # Store percentage_of_total
+    li      x13, 100
+    mul     x13, x22, x13
+    div     x13, x13, x11
+    sd      x13, 32(x8)               # Store percentage_of_total
 
     # Write result to tohost to signal completion
     la      x8, tohost

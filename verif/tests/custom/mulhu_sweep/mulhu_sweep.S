@@ -1,19 +1,10 @@
-// Copyright 2025 RISC-V Performance Analysis
-// SPDX-License-Identifier: Apache-2.0
-//
-// Synthetic Benchmark: MULHU Frequency Sweep
-//
-// Description:
-//   Tight loop performing MUL instructions with periodic MULHU operations
-//   to measure performance impact of MULHU instruction frequency
-//
-// Configuration:
-//   MULHU_INTERVAL: Number of MUL operations between each MULHU
-//   Total iterations designed to keep total instruction count ~constant
-//
-// For N=10000: ~0.01% MULHU frequency (1 MULHU per 10000 MUL)
+# Hardware MULHU Frequency Sweep Benchmark
+# Measures performance impact of MULHU instruction frequency
+# Performs N MUL operations between each MULHU to vary MULHU frequency
 
-#include "encoding.h"
+.section .text.init
+.globl _start
+.option norvc
 
 #ifndef MULHU_INTERVAL
 #define MULHU_INTERVAL 10000          // N parameter: 1 MULHU every N MULs (default)
@@ -25,93 +16,97 @@
 #define TARGET_TOTAL_OPS 1000000
 #define OUTER_LOOPS      (TARGET_TOTAL_OPS / MULHU_INTERVAL)
 
-    .section .text.init
-    .globl _start
-    .type _start, @function
-
 _start:
-    // Initialize registers with non-zero test values
-    li      x5, 0x123456789ABCDEF0    // Test operand 1
-    li      x6, 0x0FEDCBA987654321    // Test operand 2
-    li      x7, 0                     // Accumulator for results (prevent optimization)
-    li      x10, OUTER_LOOPS          // x10 = outer loop counter
-    li      x20, MULHU_INTERVAL - 1   // x20 = inner loop constant (s4 register)
+    // Initialize test data
+    // Note: Use a0-a7 (x10-x17) and s-registers to avoid conflict with MULHU expander
+    // MULHU expander clobbers t0-t6 (x5-x7, x28-x31)
+    li      x10, 0x123456789ABCDEF0   // a0 = Test operand 1
+    li      x11, 0x0FEDCBA987654321   // a1 = Test operand 2
+    li      x12, 0                    // a2 = Accumulator for results
+    li      x13, OUTER_LOOPS          // a3 = outer loop counter
+    li      x20, MULHU_INTERVAL - 1   // s4 = inner loop constant
 
-    // Read initial mcycle
-    csrr    x28, mcycle               // x28 = start cycle count
-    csrr    x29, minstret             // x29 = start instruction count
+    // Initialize profiling counters
+    li      x21, 0                    // s5 (x21) = mulhu_total_cycles
+    li      x22, 0                    // s6 (x22) = mulhu_call_count
+
+    // Capture start performance counters
+    csrr    x18, 0xB00                // s2 (x18) = mcycle - start cycle count
+    csrr    x19, 0xB02                // s3 (x19) = minstret - start instruction count
 
 outer_loop:
     // Inner loop: perform (MULHU_INTERVAL - 1) MUL operations
-    // This keeps total MUL+MULHU count at exactly 1 million
-    mv      x11, x20                  // Reload inner loop counter (1 instruction always!)
+    mv      x14, x20                  // a4 = inner loop counter
 
 inner_loop:
     // Perform MUL operations
-    // Use results to prevent compiler optimization
-    mul     x12, x5, x6               // Regular multiply
-    add     x7, x7, x12               // Accumulate result
+    mul     x15, x10, x11             // a5 = result
+    add     x12, x12, x15             // Accumulate result
 
     // Rotate operands to vary the multiplication pattern
-    addi    x5, x5, 17                // Change operand slightly
-    xori    x6, x6, 0x5A              // XOR pattern to vary bits
+    addi    x10, x10, 17              // Change operand slightly
+    xori    x11, x11, 0x5A            // XOR pattern to vary bits
 
     // Decrement inner loop counter and continue
-    addi    x11, x11, -1
-    bnez    x11, inner_loop
+    addi    x14, x14, -1
+    bnez    x14, inner_loop
 
-    // After MULHU_INTERVAL MULs, perform one MULHU
-    mulhu   x13, x5, x6               // High multiply unsigned
-    add     x7, x7, x13               // Accumulate result
+    // After MULHU_INTERVAL MULs, perform one profiled MULHU
+    csrr    x14, 0xB00                // a4 = Entry mcycle
+    mulhu   x16, x10, x11             // a6 = MULHU result (measured instruction)
+    csrr    x15, 0xB00                // a5 = Exit mcycle
+    sub     x15, x15, x14             // Delta cycles
+    add     x21, x21, x15             // Accumulate mulhu_total_cycles
+    addi    x22, x22, 1               // Increment mulhu_call_count
+    add     x12, x12, x16             // Accumulate result
 
     // Restore some entropy to operands
-    addi    x5, x5, 23
-    xori    x6, x6, 0xA5              // XOR pattern (12-bit immediate)
+    addi    x10, x10, 23
+    xori    x11, x11, 0xA5
 
     // Decrement outer loop counter and continue
-    addi    x10, x10, -1
-    bnez    x10, outer_loop
+    addi    x13, x13, -1
+    bnez    x13, outer_loop
 
-    // Read final mcycle
-    csrr    x30, mcycle               // x30 = end cycle count
-    csrr    x31, minstret             // x31 = end instruction count
+    // Capture end performance counters
+    csrr    x9, 0xB00                 // mcycle - end cycle count
+    csrr    x10, 0xB02                // minstret - end instruction count
 
-    // Calculate deltas
-    sub     x28, x30, x28             // x28 = total cycles
-    sub     x29, x31, x29             // x29 = total instructions
+    // Store profiling results in memory for extraction
+    la      x8, profiling_data
+    sd      x22, 0(x8)                // Store call_count (MULHU calls)
+    sd      x21, 8(x8)                // Store total_cycles (MULHU cycles only)
+    sub     x11, x9, x18              // Total program cycles (end - start)
+    sd      x11, 16(x8)               // Store total_program_cycles
 
-    // Store results to prevent optimization
-    // Use x7 (accumulator) to ensure calculations aren't optimized away
-    la      x14, result_accumulator
-    sd      x7, 0(x14)
-    sd      x28, 8(x14)               // Store cycle count
-    sd      x29, 16(x14)              // Store instruction count
+    // Calculate average cycles per call: mulhu_total_cycles / mulhu_call_count
+    div     x12, x21, x22
+    sd      x12, 24(x8)               // Store avg_cycles_per_call
 
-    // Write to tohost to signal completion
-    li      x15, 1
-    la      x14, tohost
-    sd      x15, 0(x14)
+    // Calculate percentage: (mulhu_cycles * 100) / total_program_cycles
+    li      x13, 100
+    mul     x13, x21, x13
+    div     x13, x13, x11
+    sd      x13, 32(x8)               // Store percentage_of_total
 
-    // Infinite loop (should not reach here)
+    // Write result to tohost to signal completion
+    la      x8, tohost
+    li      x9, 1
+    sd      x9, 0(x8)
+
 done:
     j       done
 
-    .section .tohost
-    .align 6
-    .globl tohost
-tohost:
-    .dword 0
-    .globl fromhost
-fromhost:
-    .dword 0
+.section .data
+.align 3
+profiling_data:
+    .dword 0    # call_count
+    .dword 0    # total_cycles
+    .dword 0    # total_program_cycles
+    .dword 0    # avg_cycles_per_call
+    .dword 0    # percentage_of_total
 
-    .section .data
-    .align 3
-result_accumulator:
-    .dword 0                          // Result accumulator
-    .dword 0                          // Cycle count
-    .dword 0                          // Instruction count
-
-    .section .rodata
-benchmark_info:
-    .string "MULHU Sweep Benchmark: N=10000 (0.01% MULHU)\n"
+.section .tohost
+.align 6
+tohost:     .dword 0
+fromhost:   .dword 0
