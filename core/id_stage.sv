@@ -145,6 +145,14 @@ module id_stage #(
   logic                                               stall_macro_deco_zcmt;
   logic              [        CVA6Cfg.XLEN-1:0]       jump_address;
 
+  // MULHU expander signals
+  logic                                               is_mulhu_instr;
+  logic                                               is_illegal_mulhu;
+  logic              [                    31:0]       instruction_mulhu;
+  logic                                               is_compressed_mulhu;
+  logic                                               stall_mulhu_expander;
+  logic                                               is_last_mulhu_micro_op;
+
   // Decoder signals
   logic              [CVA6Cfg.NrIssuePorts-1:0]       is_illegal_deco;
   logic              [CVA6Cfg.NrIssuePorts-1:0][31:0] instruction_deco;
@@ -231,16 +239,53 @@ module id_stage #(
       assign jump_address          = '0;
     end
 
+    // Mux between ZCMT and ZCMP outputs
+    logic [31:0] instruction_pre_mulhu;
+    logic is_illegal_pre_mulhu;
+    logic is_compressed_pre_mulhu;
+
     if (CVA6Cfg.RVZCMT) begin
-      assign instruction_cvxif_i = is_zcmt_instr[0] ? instruction_zcmt : instruction_zcmp;
-      assign is_illegal_cvxif_i = is_zcmt_instr[0] ? is_illegal_zcmt : is_illegal_zcmp;
-      assign is_compressed_cvxif_i = is_zcmt_instr[0] ? is_compressed_zcmt : is_compressed_zcmp;
-      assign stall_macro_deco = is_zcmt_instr[0] ? stall_macro_deco_zcmt : stall_macro_deco_zcmp;
-    end else begin  // Do not instantiate the mux which is not optimized cross-boundaries
-      assign instruction_cvxif_i = instruction_zcmp;
-      assign is_illegal_cvxif_i = is_illegal_zcmp;
-      assign is_compressed_cvxif_i = is_compressed_zcmp;
-      assign stall_macro_deco = stall_macro_deco_zcmp;
+      assign instruction_pre_mulhu = is_zcmt_instr[0] ? instruction_zcmt : instruction_zcmp;
+      assign is_illegal_pre_mulhu = is_zcmt_instr[0] ? is_illegal_zcmt : is_illegal_zcmp;
+      assign is_compressed_pre_mulhu = is_zcmt_instr[0] ? is_compressed_zcmt : is_compressed_zcmp;
+    end else begin
+      assign instruction_pre_mulhu = instruction_zcmp;
+      assign is_illegal_pre_mulhu = is_illegal_zcmp;
+      assign is_compressed_pre_mulhu = is_compressed_zcmp;
+    end
+
+    // MULHU expander - detects and expands MULHU instructions
+    // MULHU is opcode 0110011 (OP), funct3 011, funct7 0000001
+    assign is_mulhu_instr = (instruction_pre_mulhu[6:0] == 7'b0110011) &&  // OP opcode
+                            (instruction_pre_mulhu[14:12] == 3'b011) &&     // MULHU funct3
+                            (instruction_pre_mulhu[31:25] == 7'b0000001);   // M-extension funct7
+
+    mulhu_expander #(
+        .CVA6Cfg(CVA6Cfg)
+    ) mulhu_expander_i (
+        .clk_i             (clk_i),
+        .rst_ni            (rst_ni),
+        .instr_i           (instruction_pre_mulhu),
+        .is_mulhu_i        (is_mulhu_instr),
+        .illegal_instr_i   (is_illegal_pre_mulhu),
+        .is_compressed_i   (is_compressed_pre_mulhu),
+        .issue_ack_i       (issue_instr_ack_i[0]),
+        .instr_o           (instruction_mulhu),
+        .illegal_instr_o   (is_illegal_mulhu),
+        .is_compressed_o   (is_compressed_mulhu),
+        .fetch_stall_o     (stall_mulhu_expander),
+        .is_last_micro_op_o(is_last_mulhu_micro_op)
+    );
+
+    // Final output selection: use MULHU expander output if expanding, otherwise pass through
+    assign instruction_cvxif_i = is_mulhu_instr ? instruction_mulhu : instruction_pre_mulhu;
+    assign is_illegal_cvxif_i = is_mulhu_instr ? is_illegal_mulhu : is_illegal_pre_mulhu;
+    assign is_compressed_cvxif_i = is_mulhu_instr ? is_compressed_mulhu : is_compressed_pre_mulhu;
+
+    if (CVA6Cfg.RVZCMT) begin
+      assign stall_macro_deco = is_zcmt_instr[0] ? stall_macro_deco_zcmt : (stall_macro_deco_zcmp | stall_mulhu_expander);
+    end else begin
+      assign stall_macro_deco = stall_macro_deco_zcmp | stall_mulhu_expander;
     end
 
     if (CVA6Cfg.CvxifEn) begin
