@@ -1,0 +1,70 @@
+
+levenshtein_simple.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000080000000 <_start>:
+    80000000:	00247537          	lui	a0,0x247
+    80000004:	8ad5051b          	addiw	a0,a0,-1875 # 2468ad <_start-0x7fdb9753>
+    80000008:	00e51513          	slli	a0,a0,0xe
+    8000000c:	c4d50513          	addi	a0,a0,-947
+    80000010:	00c51513          	slli	a0,a0,0xc
+    80000014:	5e750513          	addi	a0,a0,1511
+    80000018:	00d51513          	slli	a0,a0,0xd
+    8000001c:	ef050513          	addi	a0,a0,-272
+    80000020:	001fe5b7          	lui	a1,0x1fe
+    80000024:	b975859b          	addiw	a1,a1,-1129 # 1fdb97 <_start-0x7fe02469>
+    80000028:	00c59593          	slli	a1,a1,0xc
+    8000002c:	53158593          	addi	a1,a1,1329
+    80000030:	00d59593          	slli	a1,a1,0xd
+    80000034:	d9558593          	addi	a1,a1,-619
+    80000038:	00e59593          	slli	a1,a1,0xe
+    8000003c:	32158593          	addi	a1,a1,801
+    80000040:	00000613          	li	a2,0
+    80000044:	000316b7          	lui	a3,0x31
+    80000048:	d406869b          	addiw	a3,a3,-704 # 30d40 <_start-0x7ffcf2c0>
+    8000004c:	06300a13          	li	s4,99
+    80000050:	00000a93          	li	s5,0
+    80000054:	00000b13          	li	s6,0
+    80000058:	b0002973          	csrr	s2,mcycle
+    8000005c:	b02029f3          	csrr	s3,minstret
+
+0000000080000060 <outer_loop>:
+    80000060:	000a0713          	mv	a4,s4
+
+0000000080000064 <inner_loop>:
+    80000064:	02b507b3          	mul	a5,a0,a1
+    80000068:	00f60633          	add	a2,a2,a5
+    8000006c:	01150513          	addi	a0,a0,17
+    80000070:	05a5c593          	xori	a1,a1,90
+    80000074:	fff70713          	addi	a4,a4,-1
+    80000078:	fe0716e3          	bnez	a4,80000064 <inner_loop>
+    8000007c:	b0002773          	csrr	a4,mcycle
+    80000080:	02b53833          	mulhu	a6,a0,a1
+    80000084:	b00027f3          	csrr	a5,mcycle
+    80000088:	40e787b3          	sub	a5,a5,a4
+    8000008c:	00fa8ab3          	add	s5,s5,a5
+    80000090:	001b0b13          	addi	s6,s6,1
+    80000094:	01060633          	add	a2,a2,a6
+    80000098:	01750513          	addi	a0,a0,23
+    8000009c:	0a55c593          	xori	a1,a1,165
+    800000a0:	fff68693          	addi	a3,a3,-1
+    800000a4:	fa069ee3          	bnez	a3,80000060 <outer_loop>
+    800000a8:	b00028f3          	csrr	a7,mcycle
+    800000ac:	b0202373          	csrr	t1,minstret
+    800000b0:	00002617          	auipc	a2,0x2
+    800000b4:	f5060613          	addi	a2,a2,-176 # 80002000 <profiling_data>
+    800000b8:	01663023          	sd	s6,0(a2)
+    800000bc:	01563423          	sd	s5,8(a2)
+    800000c0:	412886b3          	sub	a3,a7,s2
+    800000c4:	00d63823          	sd	a3,16(a2)
+    800000c8:	036ac733          	div	a4,s5,s6
+    800000cc:	00e63c23          	sd	a4,24(a2)
+    800000d0:	00001617          	auipc	a2,0x1
+    800000d4:	f3060613          	addi	a2,a2,-208 # 80001000 <tohost>
+    800000d8:	00100693          	li	a3,1
+    800000dc:	00d63023          	sd	a3,0(a2)
+
+00000000800000e0 <done>:
+    800000e0:	0000006f          	j	800000e0 <done>

@@ -1,0 +1,70 @@
+
+xxh3_minimal.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000080000000 <_start>:
+    80000000:	0210011b          	addiw	sp,zero,33
+    80000004:	01a11113          	slli	sp,sp,0x1a
+    80000008:	00247c37          	lui	s8,0x247
+    8000000c:	8adc0c1b          	addiw	s8,s8,-1875 # 2468ad <_start-0x7fdb9753>
+    80000010:	00ec1c13          	slli	s8,s8,0xe
+    80000014:	c4dc0c13          	addi	s8,s8,-947
+    80000018:	00cc1c13          	slli	s8,s8,0xc
+    8000001c:	5e7c0c13          	addi	s8,s8,1511
+    80000020:	00dc1c13          	slli	s8,s8,0xd
+    80000024:	ef0c0c13          	addi	s8,s8,-272
+    80000028:	fff6ecb7          	lui	s9,0xfff6e
+    8000002c:	5d5c8c9b          	addiw	s9,s9,1493 # fffffffffff6e5d5 <__global_pointer$+0xffffffff7ff6cd85>
+    80000030:	00cc9c93          	slli	s9,s9,0xc
+    80000034:	c3bc8c93          	addi	s9,s9,-965
+    80000038:	00dc9c93          	slli	s9,s9,0xd
+    8000003c:	543c8c93          	addi	s9,s9,1347
+    80000040:	00cc9c93          	slli	s9,s9,0xc
+    80000044:	210c8c93          	addi	s9,s9,528
+    80000048:	00a00a93          	li	s5,10
+    8000004c:	00000b93          	li	s7,0
+
+0000000080000050 <test1_loop>:
+    80000050:	039c0533          	mul	a0,s8,s9
+    80000054:	039c35b3          	mulhu	a1,s8,s9
+    80000058:	00b54533          	xor	a0,a0,a1
+    8000005c:	00abcbb3          	xor	s7,s7,a0
+    80000060:	001c0c13          	addi	s8,s8,1
+    80000064:	fffc8c93          	addi	s9,s9,-1
+    80000068:	fffa8a93          	addi	s5,s5,-1
+    8000006c:	fe0a92e3          	bnez	s5,80000050 <test1_loop>
+    80000070:	00001297          	auipc	t0,0x1
+    80000074:	f9028293          	addi	t0,t0,-112 # 80001000 <result1>
+    80000078:	0172b023          	sd	s7,0(t0)
+    8000007c:	00247bb7          	lui	s7,0x247
+    80000080:	8adb8b9b          	addiw	s7,s7,-1875 # 2468ad <_start-0x7fdb9753>
+    80000084:	00eb9b93          	slli	s7,s7,0xe
+    80000088:	c4db8b93          	addi	s7,s7,-947
+    8000008c:	00cb9b93          	slli	s7,s7,0xc
+    80000090:	5e7b8b93          	addi	s7,s7,1511
+    80000094:	00db9b93          	slli	s7,s7,0xd
+    80000098:	ef0b8b93          	addi	s7,s7,-272
+    8000009c:	00014337          	lui	t1,0x14
+    800000a0:	c6f3031b          	addiw	t1,t1,-913 # 13c6f <_start-0x7ffec391>
+    800000a4:	00f31313          	slli	t1,t1,0xf
+    800000a8:	9f930313          	addi	t1,t1,-1543
+    800000ac:	00a00a93          	li	s5,10
+
+00000000800000b0 <test2_loop>:
+    800000b0:	026b8bb3          	mul	s7,s7,t1
+    800000b4:	020bd513          	srli	a0,s7,0x20
+    800000b8:	00abcbb3          	xor	s7,s7,a0
+    800000bc:	fffa8a93          	addi	s5,s5,-1
+    800000c0:	fe0a98e3          	bnez	s5,800000b0 <test2_loop>
+    800000c4:	00001297          	auipc	t0,0x1
+    800000c8:	f4428293          	addi	t0,t0,-188 # 80001008 <result2>
+    800000cc:	0172b023          	sd	s7,0(t0)
+    800000d0:	00001297          	auipc	t0,0x1
+    800000d4:	f7028293          	addi	t0,t0,-144 # 80001040 <tohost>
+    800000d8:	00100313          	li	t1,1
+    800000dc:	0062b023          	sd	t1,0(t0)
+
+00000000800000e0 <done>:
+    800000e0:	0000006f          	j	800000e0 <done>
