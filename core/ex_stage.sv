@@ -241,7 +241,11 @@ module ex_stage
     // Information dedicated to RVFI - RVFI
     output [CVA6Cfg.PLEN-1:0] rvfi_mem_paddr_o,
     // Original instruction AES bits
-    input logic [5:0] orig_instr_aes_i
+    input logic [5:0] orig_instr_aes_i,
+    // Karatsuba high bits (upper 2 bits of 66-bit result) - CSR_REGFILE
+    output logic [1:0] khi_o,
+    // Write enable for khi CSR - CSR_REGFILE
+    output logic khi_we_o
 );
 
   // -------------------------
@@ -425,7 +429,9 @@ module ex_stage
       .result_o       (mult_result),
       .mult_valid_o   (mult_valid),
       .mult_ready_o   (mult_ready),
-      .mult_trans_id_o(mult_trans_id)
+      .mult_trans_id_o(mult_trans_id),
+      .khi_o          (khi_o),
+      .khi_we_o       (khi_we_o)
   );
 
   // ----------------

@@ -38,13 +38,19 @@ module multiplier
     // Mutliplier result is valid - Mult
     output logic                             mult_valid_o,
     // Multiplier transaction ID - Mult
-    output logic [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id_o
+    output logic [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id_o,
+    // Karatsuba high bits (upper 2 bits of 66-bit result) - CSR
+    output logic [                      1:0] khi_o,
+    // Write enable for khi CSR - CSR
+    output logic                             khi_we_o
 );
 
   // Pipeline register signals
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_q;
   logic                             mult_valid_q;
   logic [CVA6Cfg.XLEN*2-1:0]        mult_result_d, mult_result_q;
+  logic [                      1:0] khi_d, khi_q;
+  logic                             khi_we_d, khi_we_q;
 
   // control signals
   logic mult_valid;
@@ -60,9 +66,34 @@ module multiplier
   // We can therefore use a simple unsigned multiplication.
   assign mult_result_d = operand_a_i * operand_b_i;
 
+  // For Karatsuba MULHU expansion: compute 66-bit multiplication
+  // The upper 2 bits represent the carry from a 64x64->128 bit multiply
+  // that overflows into bits [65:64]
+  // This is computed by taking the upper 64 bits of the 128-bit product
+  // and extracting bits [1:0] (which represent overflow beyond 64 bits)
+  always_comb begin
+    khi_d = 2'b00;
+    khi_we_d = 1'b0;
+
+    // Only compute khi for valid MUL operations
+    if (mult_valid_i && operation_i == MUL) begin
+      // Extract upper 2 bits from the full 128-bit product
+      // For a 64x64 unsigned multiply: result = operand_a * operand_b
+      // The upper 64 bits are in mult_result_d[127:64]
+      // We want bits [65:64] of the conceptual 66-bit result
+      // which are bits [1:0] of the upper 64 bits
+      khi_d = mult_result_d[CVA6Cfg.XLEN+1:CVA6Cfg.XLEN];
+      khi_we_d = 1'b1;
+    end
+  end
+
   // The output selection is now fixed since we only support MUL.
   // MUL returns the lower XLEN bits of the full product.
   assign result_o = mult_result_q[CVA6Cfg.XLEN-1:0];
+
+  // Output khi values (pipelined)
+  assign khi_o = khi_q;
+  assign khi_we_o = khi_we_q;
 
   // -----------------------
   // Output pipeline register
@@ -72,11 +103,15 @@ module multiplier
       mult_valid_q  <= 1'b0;
       trans_id_q    <= '0;
       mult_result_q <= '0;
+      khi_q         <= 2'b00;
+      khi_we_q      <= 1'b0;
     end else begin
       // Latch the inputs for the next cycle
       mult_valid_q  <= mult_valid;
       trans_id_q    <= trans_id_i;
       mult_result_q <= mult_result_d;
+      khi_q         <= khi_d;
+      khi_we_q      <= khi_we_d;
     end
   end
 

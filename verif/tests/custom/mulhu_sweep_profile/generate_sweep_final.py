@@ -10,8 +10,6 @@ Correct approach:
 - Example: For 0.01% MULHU ratio → MULHU every 10,000 iterations
 """
 
-import random
-
 # Configuration
 TOTAL_INSTRUCTIONS = 10_000_000
 KERNEL_SIZE = 200
@@ -28,68 +26,8 @@ MULHU_RATIOS = {
     "10.0pct": (5000, 45000),   # 5,000 MULHU, 45,000 MUL
 }
 
-# Registers
-TEMP_REGS = ['t0', 't1', 't2', 't3', 't4', 't5', 't6']
-BASE_REG = 's0'
-
-def generate_alu_instruction():
-    ops = [
-        lambda: f"add {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"sub {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"addi {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(-2048, 2047)}",
-    ]
-    return random.choice(ops)()
-
-def generate_logic_instruction():
-    ops = [
-        lambda: f"and {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"or {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"xor {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"andi {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(0, 2047)}",
-        lambda: f"ori {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(0, 2047)}",
-        lambda: f"xori {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(-2048, 2047)}",
-    ]
-    return random.choice(ops)()
-
-def generate_shift_instruction():
-    ops = [
-        lambda: f"sll {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"srl {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"sra {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"slli {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(0, 31)}",
-        lambda: f"srli {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(0, 31)}",
-        lambda: f"srai {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(0, 31)}",
-    ]
-    return random.choice(ops)()
-
-def generate_compare_instruction():
-    ops = [
-        lambda: f"slt {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"sltu {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}",
-        lambda: f"slti {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.randint(-2048, 2047)}",
-    ]
-    return random.choice(ops)()
-
-def generate_memory_instruction():
-    offset = random.randint(0, 1020) & ~0x7
-    ops = [
-        lambda: f"lw {random.choice(TEMP_REGS)}, {offset}({BASE_REG})",
-        lambda: f"sw {random.choice(TEMP_REGS)}, {offset}(sp)",
-    ]
-    return random.choice(ops)()
-
-def generate_mixed_instruction():
-    instruction_pool = (
-        [generate_alu_instruction] * 40 +
-        [generate_logic_instruction] * 25 +
-        [generate_shift_instruction] * 15 +
-        [generate_compare_instruction] * 10 +
-        [generate_memory_instruction] * 10
-    )
-    return random.choice(instruction_pool)()
-
 def generate_benchmark(name, mulhu_count, mul_count):
-    """Generate benchmark with looped kernel"""
+    """Generate benchmark with looped kernel using simplified profiling"""
 
     # Calculate interval for MULHU insertion
     # If we need 5 MULHU in 50,000 iterations → every 10,000 iterations
@@ -108,126 +46,115 @@ def generate_benchmark(name, mulhu_count, mul_count):
     output.append(f"# MULHU interval: every {mulhu_interval} iterations" if mulhu_count > 0 else "# No MULHU")
     output.append("")
 
-    # Profiling wrapper
+    # Start section
     output.append(".section .text.init")
     output.append(".globl _start")
+    output.append(".option norvc")
+    output.append("")
     output.append("_start:")
-    output.append("    li      sp, 0x84000000")
-    output.append("    la      s0, profiling_data")
-    output.append("    sd      zero, 0(s0)")
-    output.append("    sd      zero, 8(s0)")
-    output.append("    sd      zero, 16(s0)")
-    output.append("    sd      zero, 24(s0)")
-    output.append("    csrr    s2, 0xB00")
-    output.append("    csrr    s3, 0xB02")
-    output.append("    call    benchmark_kernel")
-    output.append("    csrr    s4, 0xB00")
-    output.append("    csrr    s5, 0xB02")
-    output.append("    # Profiling data already populated by benchmark_kernel")
-    output.append("    # Just add total_program_cycles and avg_cycles_per_call")
-    output.append("    la      s0, profiling_data")
-    output.append("    sub     a0, s4, s2       # Total program cycles")
-    output.append("    sd      a0, 16(s0)       # Store total_program_cycles")
-    output.append("    # Calculate avg: total_cycles / call_count")
-    output.append("    ld      a1, 8(s0)        # Load total_cycles")
-    output.append("    ld      a2, 0(s0)        # Load call_count")
-    output.append("    beqz    a2, skip_avg     # Avoid divide by zero")
-    output.append("    div     a3, a1, a2       # avg = total / count")
-    output.append("    sd      a3, 24(s0)       # Store avg_cycles_per_call")
-    output.append("skip_avg:")
-    output.append("    la      s0, tohost")
-    output.append("    li      s1, 1")
-    output.append("    sd      s1, 0(s0)")
-    output.append("done:")
-    output.append("    j       done")
-    output.append("")
-
-    # Benchmark kernel
-    output.append(".section .text")
-    output.append("benchmark_kernel:")
-    output.append("    addi    sp, sp, -96")
-    output.append("    sd      ra, 88(sp)")
-    output.append("    sd      s0, 80(sp)")
-    output.append("    sd      s1, 72(sp)")
-    output.append("    sd      s6, 64(sp)")   # Save s6 for iteration counter
-    output.append("    sd      s7, 56(sp)")   # Save s7 for mul interval
-    output.append("    sd      s8, 48(sp)")   # Save s8 for mulhu_call_count accumulator
-    output.append("    sd      s9, 40(sp)")   # Save s9 for mulhu_total_cycles accumulator
-    output.append("")
-    output.append("    addi    s0, sp, 1024")
-    output.append("    li      t0, 123")
-    output.append("    li      t1, 456")
-    output.append("    li      t2, 789")
-    output.append("    li      t3, 321")
-    output.append("    li      t4, 654")
-    output.append("    li      t5, 987")
-    output.append("    li      t6, 111")
-    output.append("")
-    output.append(f"    li      s1, {TOTAL_ITERATIONS}")
+    output.append("    # Initialize test data")
+    output.append("    li      x10, 0x123456789ABCDEF0   # a0 = Test operand 1")
+    output.append("    li      x11, 0x0FEDCBA987654321   # a1 = Test operand 2")
+    output.append("    li      x12, 0                    # a2 = Accumulator for results")
+    output.append(f"    li      x13, {TOTAL_ITERATIONS}          # a3 = outer loop counter")
     if mulhu_count > 0:
-        output.append(f"    li      s6, 0         # Iteration counter")
-        output.append(f"    li      s7, {mulhu_interval}  # MULHU interval")
-        output.append(f"    li      s8, 0         # MULHU call_count accumulator")
-        output.append(f"    li      s9, 0         # MULHU total_cycles accumulator")
+        output.append(f"    li      x14, 0                    # a4 = iteration counter for MULHU interval")
+        output.append(f"    li      x15, {mulhu_interval}                # a5 = MULHU interval")
     output.append("")
-    output.append("loop_start:")
-    output.append("    beqz    s1, loop_end")
+    output.append("    # Initialize profiling counters")
+    output.append("    li      x21, 0                    # s5 (x21) = mulhu_total_cycles")
+    output.append("    li      x22, 0                    # s6 (x22) = mulhu_call_count")
     output.append("")
+    output.append("    # Capture start performance counters")
+    output.append("    csrr    x18, 0xB00                # s2 (x18) = mcycle - start cycle count")
+    output.append("    csrr    x19, 0xB02                # s3 (x19) = minstret - start instruction count")
+    output.append("")
+    output.append("outer_loop:")
 
-    # Generate kernel instructions
-    # Place the MUL/MULHU at a random position in the kernel
-    mul_position = random.randint(0, KERNEL_SIZE - 10)  # Leave room for modulo check
+    # Generate kernel instructions (all NOPs except for the multiply operation)
+    # Insert multiply operation in the middle of the kernel
+    mul_position = KERNEL_SIZE // 2
 
     for i in range(KERNEL_SIZE):
-        if i == mul_position and mulhu_count > 0:
-            # Insert conditional MUL/MULHU (no per-call profiling)
-            output.append("    # Conditional MUL/MULHU (no per-call profiling)")
-            output.append(f"    remu    a0, s6, s7     # Check if iteration % interval == 0")
-            output.append(f"    bnez    a0, use_mul_{i}")
-            output.append("    # MULHU path (no cycle counting)")
-            output.append(f"    mulhu   {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}")
-            output.append(f"    j       after_mul_{i}")
-            output.append(f"use_mul_{i}:")
-            output.append("    # MUL path (no profiling)")
-            output.append(f"    mul     {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}")
-            output.append(f"after_mul_{i}:")
-        elif i == mul_position and mulhu_count == 0:
-            # Always MUL (no profiling needed)
-            output.append(f"    mul     {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}, {random.choice(TEMP_REGS)}")
+        if i == mul_position:
+            if mulhu_count > 0:
+                # Conditional MUL/MULHU based on iteration counter
+                output.append("    # Conditional MUL/MULHU")
+                output.append("    remu    x16, x14, x15             # a6 = iteration % interval")
+                output.append("    bnez    x16, use_mul")
+                output.append("    # MULHU path (with profiling)")
+                output.append("    csrr    x16, 0xB00                # a6 = Entry mcycle")
+                output.append("    mulhu   x17, x10, x11             # a7 = MULHU result")
+                output.append("    csrr    x20, 0xB00                # s4 = Exit mcycle")
+                output.append("    sub     x20, x20, x16             # Delta cycles")
+                output.append("    add     x21, x21, x20             # Accumulate mulhu_total_cycles")
+                output.append("    addi    x22, x22, 1               # Increment mulhu_call_count")
+                output.append("    add     x12, x12, x17             # Accumulate result")
+                output.append("    j       after_mul")
+                output.append("use_mul:")
+                output.append("    # MUL path")
+                output.append("    mul     x17, x10, x11             # a7 = MUL result")
+                output.append("    add     x12, x12, x17             # Accumulate result")
+                output.append("after_mul:")
+            else:
+                # Always MUL (no MULHU in this benchmark)
+                output.append("    # MUL operation")
+                output.append("    mul     x17, x10, x11             # a7 = result")
+                output.append("    add     x12, x12, x17             # Accumulate result")
         else:
-            output.append(f"    {generate_mixed_instruction()}")
+            # Fill with NOPs
+            output.append("    nop")
 
     output.append("")
-    if mulhu_count > 0:
-        output.append("    addi    s6, s6, 1      # Increment iteration counter")
-    output.append("    addi    s1, s1, -1")
-    output.append("    j       loop_start")
+    output.append("    # Rotate operands to vary the multiplication pattern")
+    output.append("    addi    x10, x10, 17              # Change operand slightly")
+    output.append("    xori    x11, x11, 0x5A            # XOR pattern to vary bits")
     output.append("")
-    output.append("loop_end:")
     if mulhu_count > 0:
-        output.append("    # Store accumulated profiling data to memory")
-        output.append("    la      a0, profiling_data")
-        output.append("    sd      s8, 0(a0)        # Store call_count")
-        output.append("    sd      s9, 8(a0)        # Store total_cycles")
-    output.append("    ld      ra, 88(sp)")
-    output.append("    ld      s0, 80(sp)")
-    output.append("    ld      s1, 72(sp)")
-    output.append("    ld      s6, 64(sp)")
-    output.append("    ld      s7, 56(sp)")
-    output.append("    ld      s8, 48(sp)")
-    output.append("    ld      s9, 40(sp)")
-    output.append("    addi    sp, sp, 96")
-    output.append("    ret")
+        output.append("    # Increment iteration counter")
+        output.append("    addi    x14, x14, 1")
+        output.append("")
+    output.append("    # Decrement loop counter and continue")
+    output.append("    addi    x13, x13, -1")
+    output.append("    bnez    x13, outer_loop")
+    output.append("")
+    output.append("    # Capture end performance counters")
+    output.append("    csrr    x9, 0xB00                 # mcycle - end cycle count")
+    output.append("    csrr    x10, 0xB02                # minstret - end instruction count")
+    output.append("")
+    output.append("    # Store profiling results in memory for extraction")
+    output.append("    la      x8, profiling_data")
+    output.append("    sd      x22, 0(x8)                # Store call_count (MULHU calls)")
+    output.append("    sd      x21, 8(x8)                # Store total_cycles (MULHU cycles only)")
+    output.append("    sub     x11, x9, x18              # Total program cycles (end - start)")
+    output.append("    sd      x11, 16(x8)               # Store total_program_cycles")
+    output.append("")
+    output.append("    # Calculate average cycles per call: mulhu_total_cycles / mulhu_call_count")
+    if mulhu_count > 0:
+        output.append("    beqz    x22, skip_avg             # Avoid divide by zero")
+        output.append("    div     x12, x21, x22")
+        output.append("    sd      x12, 24(x8)               # Store avg_cycles_per_call")
+        output.append("skip_avg:")
+    else:
+        output.append("    sd      zero, 24(x8)              # No MULHU, avg = 0")
+    output.append("")
+    output.append("    # Write result to tohost to signal completion")
+    output.append("    la      x8, tohost")
+    output.append("    li      x9, 1")
+    output.append("    sd      x9, 0(x8)")
+    output.append("")
+    output.append("done:")
+    output.append("    j       done")
     output.append("")
 
     # Data section
     output.append(".section .data")
     output.append(".align 3")
     output.append("profiling_data:")
-    output.append("    .dword 0")
-    output.append("    .dword 0")
-    output.append("    .dword 0")
-    output.append("    .dword 0")
+    output.append("    .dword 0    # call_count")
+    output.append("    .dword 0    # total_cycles")
+    output.append("    .dword 0    # total_program_cycles")
+    output.append("    .dword 0    # avg_cycles_per_call")
     output.append("")
     output.append(".section .tohost")
     output.append(".align 6")
@@ -238,10 +165,10 @@ def generate_benchmark(name, mulhu_count, mul_count):
 
 def main():
     for name, (mulhu_count, mul_count) in MULHU_RATIOS.items():
-        random.seed(42)  # Reset seed for each benchmark for consistency
         filename = f"sweep_mulhu_{name}.S"
         print(f"Generating {filename}...")
         print(f"  MULHU: {mulhu_count}, MUL: {mul_count}")
+        print(f"  MULHU interval: every {TOTAL_ITERATIONS // mulhu_count if mulhu_count > 0 else 'N/A'} iterations")
 
         content = generate_benchmark(name, mulhu_count, mul_count)
 

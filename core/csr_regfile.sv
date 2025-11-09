@@ -170,7 +170,11 @@ module csr_regfile
     // RVFI
     output rvfi_probes_csr_t rvfi_csr_o,
     //jvt output
-    output jvt_t jvt_o
+    output jvt_t jvt_o,
+    // Karatsuba high bits hardware write - EX_STAGE
+    input logic [1:0] khi_i,
+    // Karatsuba high bits write enable - EX_STAGE
+    input logic khi_we_i
 );
 
   localparam logic [63:0] SMODE_STATUS_READ_MASK = ariane_pkg::smode_status_read_mask(CVA6Cfg);
@@ -269,6 +273,7 @@ module csr_regfile
   logic [CVA6Cfg.XLEN-1:0] dcache_q, dcache_d;
   logic [CVA6Cfg.XLEN-1:0] icache_q, icache_d;
   logic [CVA6Cfg.XLEN-1:0] acc_cons_q, acc_cons_d;
+  logic [CVA6Cfg.XLEN-1:0] khi_q, khi_d;  // Karatsuba high bits for MULHU expansion
 
   logic wfi_d, wfi_q;
 
@@ -766,6 +771,8 @@ module csr_regfile
             read_access_exception = 1'b1;
           end
         end
+        // custom (non RISC-V) Karatsuba high bits for MULHU expansion
+        riscv::CSR_KHI: csr_rdata = {{CVA6Cfg.XLEN - 2{1'b0}}, khi_q[1:0]};
         // PMPs
         riscv::CSR_PMPCFG0,
                 riscv::CSR_PMPCFG1,
@@ -974,6 +981,12 @@ module csr_regfile
     dcache_d   = dcache_q;
     icache_d   = icache_q;
     acc_cons_d = acc_cons_q;
+    khi_d      = khi_q;
+
+    // Hardware write from multiplier takes priority over software write
+    if (khi_we_i) begin
+      khi_d = {{CVA6Cfg.XLEN - 2{1'b0}}, khi_i};
+    end
 
     if (CVA6Cfg.RVH) begin
       vstvec_d                 = vstvec_q;
@@ -1638,6 +1651,7 @@ module csr_regfile
             update_access_exception = 1'b1;
           end
         end
+        riscv::CSR_KHI: khi_d = {{CVA6Cfg.XLEN - 2{1'b0}}, csr_wdata[1:0]};  // store only lower 2 bits
         // PMP locked logic
         // 1. refuse to update any locked entry
         // 2. also refuse to update the entry below a locked TOR entry
@@ -2569,6 +2583,7 @@ module csr_regfile
       icache_q        <= {{CVA6Cfg.XLEN - 1{1'b0}}, 1'b1};
       mcountinhibit_q <= '0;
       acc_cons_q      <= {{CVA6Cfg.XLEN - 1{1'b0}}, CVA6Cfg.EnableAccelerator};
+      khi_q           <= {CVA6Cfg.XLEN{1'b0}};
       // supervisor mode registers
       if (CVA6Cfg.RVS) begin
         medeleg_q    <= {CVA6Cfg.XLEN{1'b0}};
@@ -2652,6 +2667,7 @@ module csr_regfile
       icache_q        <= icache_d;
       mcountinhibit_q <= mcountinhibit_d;
       acc_cons_q      <= acc_cons_d;
+      khi_q           <= khi_d;
       // supervisor mode registers
       if (CVA6Cfg.RVS) begin
         medeleg_q    <= medeleg_d;

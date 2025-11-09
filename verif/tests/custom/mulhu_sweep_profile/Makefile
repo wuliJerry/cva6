@@ -16,7 +16,7 @@ LDFLAGS = -T$(LINK_DIR)/link.ld \
 CFLAGS = -march=$(ARCH) -mabi=$(ABI) -static -mcmodel=medany \
          -fvisibility=hidden -nostdlib -nostartfiles -O2
 
-# Benchmark targets
+# Hardware MULHU benchmark targets
 SWEEP_001PCT_ELF = sweep_mulhu_0.01pct.elf
 SWEEP_005PCT_ELF = sweep_mulhu_0.05pct.elf
 SWEEP_01PCT_ELF = sweep_mulhu_0.1pct.elf
@@ -24,50 +24,102 @@ SWEEP_1PCT_ELF = sweep_mulhu_1.0pct.elf
 SWEEP_5PCT_ELF = sweep_mulhu_5.0pct.elf
 SWEEP_10PCT_ELF = sweep_mulhu_10.0pct.elf
 
-ALL_ELFS = $(SWEEP_001PCT_ELF) $(SWEEP_005PCT_ELF) $(SWEEP_01PCT_ELF) \
-           $(SWEEP_1PCT_ELF) $(SWEEP_5PCT_ELF) $(SWEEP_10PCT_ELF)
+# Software MULHU benchmark targets
+SWEEP_SOFT_001PCT_ELF = sweep_mulhu_soft_0.01pct.elf
+SWEEP_SOFT_005PCT_ELF = sweep_mulhu_soft_0.05pct.elf
+SWEEP_SOFT_01PCT_ELF = sweep_mulhu_soft_0.1pct.elf
+SWEEP_SOFT_1PCT_ELF = sweep_mulhu_soft_1.0pct.elf
+SWEEP_SOFT_5PCT_ELF = sweep_mulhu_soft_5.0pct.elf
+SWEEP_SOFT_10PCT_ELF = sweep_mulhu_soft_10.0pct.elf
+
+ALL_HW_ELFS = $(SWEEP_001PCT_ELF) $(SWEEP_005PCT_ELF) $(SWEEP_01PCT_ELF) \
+              $(SWEEP_1PCT_ELF) $(SWEEP_5PCT_ELF) $(SWEEP_10PCT_ELF)
+
+ALL_SOFT_ELFS = $(SWEEP_SOFT_001PCT_ELF) $(SWEEP_SOFT_005PCT_ELF) $(SWEEP_SOFT_01PCT_ELF) \
+                $(SWEEP_SOFT_1PCT_ELF) $(SWEEP_SOFT_5PCT_ELF) $(SWEEP_SOFT_10PCT_ELF)
+
+ALL_ELFS = $(ALL_HW_ELFS) $(ALL_SOFT_ELFS)
 
 all: $(ALL_ELFS)
 	@echo "All benchmarks built successfully!"
 	@echo ""
-	@echo "Benchmarks:"
+	@echo "Hardware MULHU Benchmarks:"
 	@echo "  $(SWEEP_001PCT_ELF)  - 0.01% MULHU ratio (5 MULHU, 49,995 MUL)"
 	@echo "  $(SWEEP_005PCT_ELF)  - 0.05% MULHU ratio (25 MULHU, 49,975 MUL)"
 	@echo "  $(SWEEP_01PCT_ELF)   - 0.1% MULHU ratio (50 MULHU, 49,950 MUL)"
 	@echo "  $(SWEEP_1PCT_ELF)    - 1.0% MULHU ratio (500 MULHU, 49,500 MUL)"
 	@echo "  $(SWEEP_5PCT_ELF)    - 5.0% MULHU ratio (2,500 MULHU, 47,500 MUL)"
 	@echo "  $(SWEEP_10PCT_ELF)   - 10.0% MULHU ratio (5,000 MULHU, 45,000 MUL)"
+	@echo ""
+	@echo "Software MULHU Benchmarks:"
+	@echo "  $(SWEEP_SOFT_001PCT_ELF)  - 0.01% MULHU_SOFT ratio (5 MULHU_SOFT, 49,995 MUL)"
+	@echo "  $(SWEEP_SOFT_005PCT_ELF)  - 0.05% MULHU_SOFT ratio (25 MULHU_SOFT, 49,975 MUL)"
+	@echo "  $(SWEEP_SOFT_01PCT_ELF)   - 0.1% MULHU_SOFT ratio (50 MULHU_SOFT, 49,950 MUL)"
+	@echo "  $(SWEEP_SOFT_1PCT_ELF)    - 1.0% MULHU_SOFT ratio (500 MULHU_SOFT, 49,500 MUL)"
+	@echo "  $(SWEEP_SOFT_5PCT_ELF)    - 5.0% MULHU_SOFT ratio (2,500 MULHU_SOFT, 47,500 MUL)"
+	@echo "  $(SWEEP_SOFT_10PCT_ELF)   - 10.0% MULHU_SOFT ratio (5,000 MULHU_SOFT, 45,000 MUL)"
+
+hw: $(ALL_HW_ELFS)
+	@echo "Hardware MULHU benchmarks built successfully!"
+
+soft: $(ALL_SOFT_ELFS)
+	@echo "Software MULHU benchmarks built successfully!"
 
 # Build rules
-$(SWEEP_001PCT_ELF): sweep_mulhu_soft_0.01pct.S
+$(SWEEP_001PCT_ELF): sweep_mulhu_0.01pct.S
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
 	@echo "Built: $@ (0.01% MULHU ratio)"
 
-$(SWEEP_005PCT_ELF): sweep_mulhu_soft_0.05pct.S
+$(SWEEP_005PCT_ELF): sweep_mulhu_0.05pct.S
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
 	@echo "Built: $@ (0.05% MULHU ratio)"
 
-$(SWEEP_01PCT_ELF): sweep_mulhu_soft_0.1pct.S
+$(SWEEP_01PCT_ELF): sweep_mulhu_0.1pct.S
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
 	@echo "Built: $@ (0.1% MULHU ratio)"
 
-$(SWEEP_1PCT_ELF): sweep_mulhu_soft_1.0pct.S
+$(SWEEP_1PCT_ELF): sweep_mulhu_1.0pct.S
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
 	@echo "Built: $@ (1.0% MULHU ratio)"
 
-$(SWEEP_5PCT_ELF): sweep_mulhu_soft_5.0pct.S
+$(SWEEP_5PCT_ELF): sweep_mulhu_5.0pct.S
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
 	@echo "Built: $@ (5.0% MULHU ratio)"
 
-$(SWEEP_10PCT_ELF): sweep_mulhu_soft_10.0pct.S
+$(SWEEP_10PCT_ELF): sweep_mulhu_10.0pct.S
 	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
 	@echo "Built: $@ (10.0% MULHU ratio)"
+
+# Software MULHU build rules
+$(SWEEP_SOFT_001PCT_ELF): sweep_mulhu_soft_0.01pct.S
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
+	@echo "Built: $@ (0.01% MULHU_SOFT ratio)"
+
+$(SWEEP_SOFT_005PCT_ELF): sweep_mulhu_soft_0.05pct.S
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
+	@echo "Built: $@ (0.05% MULHU_SOFT ratio)"
+
+$(SWEEP_SOFT_01PCT_ELF): sweep_mulhu_soft_0.1pct.S
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
+	@echo "Built: $@ (0.1% MULHU_SOFT ratio)"
+
+$(SWEEP_SOFT_1PCT_ELF): sweep_mulhu_soft_1.0pct.S
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
+	@echo "Built: $@ (1.0% MULHU_SOFT ratio)"
+
+$(SWEEP_SOFT_5PCT_ELF): sweep_mulhu_soft_5.0pct.S
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
+	@echo "Built: $@ (5.0% MULHU_SOFT ratio)"
+
+$(SWEEP_SOFT_10PCT_ELF): sweep_mulhu_soft_10.0pct.S
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@ -lgcc
+	@echo "Built: $@ (10.0% MULHU_SOFT ratio)"
 
 # Utility targets
 clean:
 	rm -f *.elf *.dump *.o
 
-.PHONY: all clean
+.PHONY: all hw soft clean
 
 # VCS simulation commands
 help:

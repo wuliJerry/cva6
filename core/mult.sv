@@ -23,7 +23,11 @@ module mult
     // Mutl is ready - ISSUE_STAGE
     output logic                                 mult_ready_o,
     // Mult transaction ID - ISSUE_STAGE
-    output logic     [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id_o
+    output logic     [CVA6Cfg.TRANS_ID_BITS-1:0] mult_trans_id_o,
+    // Karatsuba high bits (upper 2 bits of 66-bit result) - CSR
+    output logic     [                      1:0] khi_o,
+    // Write enable for khi CSR - CSR
+    output logic                                 khi_we_o
 );
   logic mul_valid;
   logic div_valid;
@@ -67,7 +71,9 @@ module mult
       .result_o       (mul_result),
       .mult_valid_i   (mul_valid_op),
       .mult_valid_o   (mul_valid),
-      .mult_trans_id_o(mul_trans_id)
+      .mult_trans_id_o(mul_trans_id),
+      .khi_o          (khi_o),
+      .khi_we_o       (khi_we_o)
   );
 
   // ---------------------

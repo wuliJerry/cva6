@@ -1,0 +1,63 @@
+
+mulhu_simple.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000080000000 <_start>:
+    80000000:	00247537          	lui	a0,0x247
+    80000004:	8ad5051b          	addiw	a0,a0,-1875 # 2468ad <_start-0x7fdb9753>
+    80000008:	00e51513          	slli	a0,a0,0xe
+    8000000c:	c4d50513          	addi	a0,a0,-947
+    80000010:	00c51513          	slli	a0,a0,0xc
+    80000014:	5e750513          	addi	a0,a0,1511
+    80000018:	00d51513          	slli	a0,a0,0xd
+    8000001c:	ef050513          	addi	a0,a0,-272
+    80000020:	001fe5b7          	lui	a1,0x1fe
+    80000024:	b975859b          	addiw	a1,a1,-1129 # 1fdb97 <_start-0x7fe02469>
+    80000028:	00c59593          	slli	a1,a1,0xc
+    8000002c:	53158593          	addi	a1,a1,1329
+    80000030:	00d59593          	slli	a1,a1,0xd
+    80000034:	d9558593          	addi	a1,a1,-619
+    80000038:	00e59593          	slli	a1,a1,0xe
+    8000003c:	32158593          	addi	a1,a1,801
+    80000040:	00000613          	li	a2,0
+    80000044:	06400693          	li	a3,100
+    80000048:	00000a93          	li	s5,0
+    8000004c:	00000b13          	li	s6,0
+    80000050:	b0002973          	csrr	s2,mcycle
+    80000054:	b02029f3          	csrr	s3,minstret
+
+0000000080000058 <test_loop>:
+    80000058:	01150513          	addi	a0,a0,17
+    8000005c:	05a5c593          	xori	a1,a1,90
+    80000060:	b0002773          	csrr	a4,mcycle
+    80000064:	02b53833          	mulhu	a6,a0,a1
+    80000068:	b00027f3          	csrr	a5,mcycle
+    8000006c:	40e787b3          	sub	a5,a5,a4
+    80000070:	00fa8ab3          	add	s5,s5,a5
+    80000074:	001b0b13          	addi	s6,s6,1
+    80000078:	01060633          	add	a2,a2,a6
+    8000007c:	fff68693          	addi	a3,a3,-1
+    80000080:	fc069ce3          	bnez	a3,80000058 <test_loop>
+    80000084:	b00024f3          	csrr	s1,mcycle
+    80000088:	b0202573          	csrr	a0,minstret
+    8000008c:	00002417          	auipc	s0,0x2
+    80000090:	f7440413          	addi	s0,s0,-140 # 80002000 <profiling_data>
+    80000094:	01643023          	sd	s6,0(s0)
+    80000098:	01543423          	sd	s5,8(s0)
+    8000009c:	412485b3          	sub	a1,s1,s2
+    800000a0:	00b43823          	sd	a1,16(s0)
+    800000a4:	036ac733          	div	a4,s5,s6
+    800000a8:	00e43c23          	sd	a4,24(s0)
+    800000ac:	06400793          	li	a5,100
+    800000b0:	02fa87b3          	mul	a5,s5,a5
+    800000b4:	02b7c7b3          	div	a5,a5,a1
+    800000b8:	02f43023          	sd	a5,32(s0)
+    800000bc:	00001417          	auipc	s0,0x1
+    800000c0:	f4440413          	addi	s0,s0,-188 # 80001000 <tohost>
+    800000c4:	00100493          	li	s1,1
+    800000c8:	00943023          	sd	s1,0(s0)
+
+00000000800000cc <done>:
+    800000cc:	0000006f          	j	800000cc <done>

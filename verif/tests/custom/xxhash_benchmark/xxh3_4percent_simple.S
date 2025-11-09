@@ -32,8 +32,8 @@ bench1_loop:
     sub     s9, s9, s5
     addi    s5, s5, -1
     bnez    s5, bench1_loop
-    li      t0, NUM_ITER_BENCH1
-    sd      t0, 0(s11)
+    li      a3, NUM_ITER_BENCH1
+    sd      a3, 0(s11)
     sd      s6, 8(s11)
     sd      s7, 16(s11)
 
@@ -50,8 +50,8 @@ bench2_loop:
     xor     s7, s7, a0
     addi    s5, s5, -1
     bnez    s5, bench2_loop
-    li      t0, NUM_ITER_BENCH2
-    sd      t0, 0(s11)
+    li      a3, NUM_ITER_BENCH2
+    sd      a3, 0(s11)
     sd      s6, 8(s11)
     sd      s7, 16(s11)
 
@@ -68,8 +68,8 @@ bench3_loop:
     xor     s7, s7, a0
     addi    s5, s5, -1
     bnez    s5, bench3_loop
-    li      t0, NUM_ITER_BENCH3
-    sd      t0, 0(s11)
+    li      a3, NUM_ITER_BENCH3
+    sd      a3, 0(s11)
     sd      s6, 8(s11)
     sd      s7, 16(s11)
 
@@ -77,44 +77,44 @@ bench3_loop:
     la      s11, profiling_avalanche
     li      s6, 0
     li      s7, 0x123456789ABCDEF0
-    li      t1, PRIME_MX1_LO
-    li      t2, PRIME_MX1_HI
-    slli    t2, t2, 32
-    or      t1, t1, t2
+    li      a4, PRIME_MX1_LO
+    li      a5, PRIME_MX1_HI
+    slli    a5, a5, 32
+    or      a4, a4, a5
     li      s5, NUM_ITER_BENCH4
 bench4_loop:
     # 10x MUL operations (avalanche-style mixing)
-    mul     s7, s7, t1
+    mul     s7, s7, a4
     srli    a0, s7, 32
     xor     s7, s7, a0
-    mul     s7, s7, t1
+    mul     s7, s7, a4
     srli    a0, s7, 29
     xor     s7, s7, a0
-    mul     s7, s7, t1
+    mul     s7, s7, a4
     srli    a0, s7, 37
     xor     s7, s7, a0
-    mul     s7, s7, t1
+    mul     s7, s7, a4
     srli    a0, s7, 32
     xor     s7, s7, a0
-    mul     s7, s7, t1
+    mul     s7, s7, a4
     srli    a0, s7, 29
     xor     s7, s7, a0
-    mul     s7, s7, t1
-    mul     s7, s7, t1
-    mul     s7, s7, t1
-    mul     s7, s7, t1
-    mul     s7, s7, t1
+    mul     s7, s7, a4
+    mul     s7, s7, a4
+    mul     s7, s7, a4
+    mul     s7, s7, a4
+    mul     s7, s7, a4
     addi    s5, s5, -1
     bnez    s5, bench4_loop
-    li      t0, NUM_ITER_BENCH4
-    sd      t0, 0(s11)
+    li      a3, NUM_ITER_BENCH4
+    sd      a3, 0(s11)
     sd      s6, 8(s11)
     sd      s7, 16(s11)
 
     # Exit
-    la      t0, tohost
-    li      t1, 1
-    sd      t1, 0(t0)
+    la      a3, tohost
+    li      a4, 1
+    sd      a4, 0(a3)
 done:
     j       done
 
@@ -130,34 +130,34 @@ xxh3_16bytes:
     mv      s0, a0
     mv      s1, a1
     mv      s2, a2
-    ld      t0, 24(s1)
-    ld      t1, 32(s1)
-    xor     t0, t0, t1
-    add     t0, t0, s2
-    ld      t2, 40(s1)
-    ld      t3, 48(s1)
-    xor     t2, t2, t3
-    sub     t2, t2, s2
+    ld      a3, 24(s1)
+    ld      a4, 32(s1)
+    xor     a3, a3, a4
+    add     a3, a3, s2
+    ld      a5, 40(s1)
+    ld      a6, 48(s1)
+    xor     a5, a5, a6
+    sub     a5, a5, s2
     ld      s3, 0(s0)
     ld      s4, 8(s0)
-    xor     s3, s3, t0
-    xor     s4, s4, t2
-    mul     t0, s3, s4
-    mulhu   t1, s3, s4
-    xor     t0, t0, t1
+    xor     s3, s3, a3
+    xor     s4, s4, a5
+    mul     a3, s3, s4
+    mulhu   a4, s3, s4
+    xor     a3, a3, a4
     li      a0, 16
     add     a0, a0, s3
     add     a0, a0, s4
-    add     a0, a0, t0
-    srli    t0, a0, 37
-    xor     a0, a0, t0
-    li      t1, PRIME_MX1_LO
-    li      t2, PRIME_MX1_HI
-    slli    t2, t2, 32
-    or      t1, t1, t2
-    mul     a0, a0, t1
-    srli    t0, a0, 32
-    xor     a0, a0, t0
+    add     a0, a0, a3
+    srli    a3, a0, 37
+    xor     a0, a0, a3
+    li      a4, PRIME_MX1_LO
+    li      a5, PRIME_MX1_HI
+    slli    a5, a5, 32
+    or      a4, a4, a5
+    mul     a0, a0, a4
+    srli    a3, a0, 32
+    xor     a0, a0, a3
     ld      ra, 0(sp)
     ld      s0, 8(sp)
     ld      s1, 16(sp)
@@ -182,69 +182,69 @@ xxh3_64bytes:
     mv      s1, a1
     mv      s2, a2
     li      s3, PRIME_MX1_LO
-    li      t0, PRIME_MX1_HI
-    slli    t0, t0, 32
-    or      s3, s3, t0
-    li      t0, 64
-    mul     s3, s3, t0
+    li      a3, PRIME_MX1_HI
+    slli    a3, a3, 32
+    or      s3, s3, a3
+    li      a3, 64
+    mul     s3, s3, a3
     ld      s4, 0(s0)
     ld      s5, 8(s0)
-    ld      t0, 0(s1)
-    ld      t1, 8(s1)
-    add     t0, t0, s2
-    xor     s4, s4, t0
-    sub     t1, t1, s2
-    xor     s5, s5, t1
-    mul     t2, s4, s5
-    mulhu   t3, s4, s5
-    xor     t2, t2, t3
-    add     s3, s3, t2
+    ld      a3, 0(s1)
+    ld      a4, 8(s1)
+    add     a3, a3, s2
+    xor     s4, s4, a3
+    sub     a4, a4, s2
+    xor     s5, s5, a4
+    mul     a5, s4, s5
+    mulhu   a6, s4, s5
+    xor     a5, a5, a6
+    add     s3, s3, a5
     ld      s4, 16(s0)
     ld      s5, 24(s0)
-    ld      t0, 16(s1)
-    ld      t1, 24(s1)
-    add     t0, t0, s2
-    xor     s4, s4, t0
-    sub     t1, t1, s2
-    xor     s5, s5, t1
-    mul     t2, s4, s5
-    mulhu   t3, s4, s5
-    xor     t2, t2, t3
-    add     s3, s3, t2
+    ld      a3, 16(s1)
+    ld      a4, 24(s1)
+    add     a3, a3, s2
+    xor     s4, s4, a3
+    sub     a4, a4, s2
+    xor     s5, s5, a4
+    mul     a5, s4, s5
+    mulhu   a6, s4, s5
+    xor     a5, a5, a6
+    add     s3, s3, a5
     ld      s4, 32(s0)
     ld      s5, 40(s0)
-    ld      t0, 32(s1)
-    ld      t1, 40(s1)
-    add     t0, t0, s2
-    xor     s4, s4, t0
-    sub     t1, t1, s2
-    xor     s5, s5, t1
-    mul     t2, s4, s5
-    mulhu   t3, s4, s5
-    xor     t2, t2, t3
-    add     s3, s3, t2
+    ld      a3, 32(s1)
+    ld      a4, 40(s1)
+    add     a3, a3, s2
+    xor     s4, s4, a3
+    sub     a4, a4, s2
+    xor     s5, s5, a4
+    mul     a5, s4, s5
+    mulhu   a6, s4, s5
+    xor     a5, a5, a6
+    add     s3, s3, a5
     ld      s4, 48(s0)
     ld      s5, 56(s0)
-    ld      t0, 48(s1)
-    ld      t1, 56(s1)
-    add     t0, t0, s2
-    xor     s4, s4, t0
-    sub     t1, t1, s2
-    xor     s5, s5, t1
-    mul     t2, s4, s5
-    mulhu   t3, s4, s5
-    xor     t2, t2, t3
-    add     s3, s3, t2
+    ld      a3, 48(s1)
+    ld      a4, 56(s1)
+    add     a3, a3, s2
+    xor     s4, s4, a3
+    sub     a4, a4, s2
+    xor     s5, s5, a4
+    mul     a5, s4, s5
+    mulhu   a6, s4, s5
+    xor     a5, a5, a6
+    add     s3, s3, a5
     mv      a0, s3
-    srli    t0, a0, 37
-    xor     a0, a0, t0
-    li      t1, PRIME_MX1_LO
-    li      t2, PRIME_MX1_HI
-    slli    t2, t2, 32
-    or      t1, t1, t2
-    mul     a0, a0, t1
-    srli    t0, a0, 32
-    xor     a0, a0, t0
+    srli    a3, a0, 37
+    xor     a0, a0, a3
+    li      a4, PRIME_MX1_LO
+    li      a5, PRIME_MX1_HI
+    slli    a5, a5, 32
+    or      a4, a4, a5
+    mul     a0, a0, a4
+    srli    a3, a0, 32
+    xor     a0, a0, a3
     ld      ra, 0(sp)
     ld      s0, 8(sp)
     ld      s1, 16(sp)

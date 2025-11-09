@@ -465,6 +465,9 @@ module cva6
   exception_t store_exception_ex_id;
   // MULT
   logic [CVA6Cfg.NrIssuePorts-1:0] mult_valid_id_ex;
+  // Karatsuba high bits (from multiplier to CSR)
+  logic [1:0] khi_ex_csr;
+  logic khi_we_ex_csr;
   // FPU
   logic fpu_ready_ex_id;
   logic [CVA6Cfg.NrIssuePorts-1:0] fpu_valid_id_ex;
@@ -1072,7 +1075,10 @@ module cva6
       .pmpaddr_i               (pmpaddr),
       //RVFI
       .rvfi_lsu_ctrl_o         (rvfi_lsu_ctrl),
-      .rvfi_mem_paddr_o        (rvfi_mem_paddr)
+      .rvfi_mem_paddr_o        (rvfi_mem_paddr),
+      // Karatsuba high bits
+      .khi_o                   (khi_ex_csr),
+      .khi_we_o                (khi_we_ex_csr)
   );
 
   // ---------
@@ -1210,6 +1216,9 @@ module cva6
       .pmpaddr_o               (pmpaddr),
       .mcountinhibit_o         (mcountinhibit_csr_perf),
       .jvt_o                   (jvt),
+      // Karatsuba high bits hardware write
+      .khi_i                   (khi_ex_csr),
+      .khi_we_i                (khi_we_ex_csr),
       //RVFI
       .rvfi_csr_o              (rvfi_csr)
   );
