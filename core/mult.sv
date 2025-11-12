@@ -37,7 +37,10 @@ module mult
   logic mul_valid_op;
   // Input Arbitration
 
-  assign mul_valid_op = ~flush_i && mult_valid_i && (fu_data_i.operation inside { MUL, MULH, MULHU, MULHSU, MULW, CLMUL, CLMULH, CLMULR });
+  assign mul_valid_op = ~flush_i && mult_valid_i && (fu_data_i.operation inside {
+    MUL, MULH, MULHU, MULHSU, MULW, CLMUL, CLMULH, CLMULR,
+    MUL_LL32, MUL_X0_32, MUL_X1_32, MUL_HH32, FINISH_HI  // Fused microops
+  });
 
   assign div_valid_op = ~flush_i && mult_valid_i && (fu_data_i.operation inside { DIV, DIVU, DIVW, DIVUW, REM, REMU, REMW, REMUW });
 

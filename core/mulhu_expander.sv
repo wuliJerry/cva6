@@ -10,18 +10,19 @@
 //
 // Author: CVA6 Team
 // Date: 2025
-// Description: MULHU instruction expander - breaks MULHU into micro-ops sequence
-//              using stack storage for temporary values to preserve ABI compliance.
-//              This allows a core with only MUL support to execute MULHU.
+// Description: MULHU instruction expander - breaks MULHU into fused 32-bit micro-ops.
+//              Uses custom bespoke operations to eliminate unnecessary shifts/masks.
 //
 // The expansion implements unsigned 64x64->128 bit multiplication,
-// returning the upper 64 bits. Algorithm:
-//   1. Split operands into high/low 32-bit parts (using t0-t3)
-//   2. Compute 4 partial products using MUL (into t4-t6, rd)
-//   3. Combine with proper carries to get upper 64 bits in rd
+// returning the upper 64 bits using 5 fused microops (vs 20 standard RISC-V ops):
+//   1. MUL_LL32:   Multiply rs1[31:0] × rs2[31:0], latch upper 32 bits as carry
+//   2. MUL_X0_32:  Multiply rs1[63:32] × rs2[31:0] → tX0
+//   3. MUL_X1_32:  Multiply rs1[31:0] × rs2[63:32] → tX1 (can be parallel with #2)
+//   4. MUL_HH32:   Multiply rs1[63:32] × rs2[63:32] → tH
+//   5. FINISH_HI:  rd = tH + ((tX0 + tX1 + carry32) >> 32) - no shifter needed!
 //
-// Note: This expansion clobbers t0-t6 (caller-saved registers).
-// Since MULHU appears atomic to software, this is ABI-compliant.
+// Benefits: 75% fewer microops, no shifter overhead, direct 32-bit extraction.
+// Note: This expansion uses t0, t4-t6 (caller-saved registers).
 
 module mulhu_expander #(
     parameter config_pkg::cva6_cfg_t CVA6Cfg = config_pkg::cva6_cfg_empty
@@ -40,32 +41,14 @@ module mulhu_expander #(
     output logic        is_last_micro_op_o  // Last micro-op in sequence
 );
 
-  // FSM States for MULHU expansion (no stack operations needed)
-  typedef enum logic [4:0] {
+  // FSM States for MULHU expansion using fused 32-bit microops
+  typedef enum logic [2:0] {
     IDLE,              // 0: No expansion
-    // Extract hi/lo 32-bit parts
-    SRLI_T1,           // 1: t1 = rs1 >> 32
-    LI_T4,             // 2: t4 = -1
-    SRLI_T4,           // 3: t4 = t4 >> 32 (mask)
-    AND_T0,            // 4: t0 = rs1 & t4
-    SRLI_T3,           // 5: t3 = rs2 >> 32
-    AND_T2,            // 6: t2 = rs2 & t4
-    // Compute partial products
-    MUL1,              // 7: t4 = t0 * t2
-    MUL2,              // 8: t5 = t0 * t3
-    MUL3,              // 9: t6 = t1 * t2
-    MUL4,              // 10: rd = t1 * t3
-    // Combine partial products
-    SRLI_T0_2,         // 11: t0 = t4 >> 32
-    ADD1,              // 12: t5 = t5 + t0
-    SLTU1,             // 13: t0 = (t5 < t0)
-    ADD2,              // 14: t1 = t5 + t6
-    SLTU2,             // 15: t2 = (t1 < t6)
-    ADD3,              // 16: t0 = t0 + t2
-    SLLI_T0,           // 17: t0 = t0 << 32
-    SRLI_T1_2,         // 18: t1 = t1 >> 32
-    OR_T0_T1,          // 19: t0 = t0 | t1
-    ADD_FINAL          // 20: rd = rd + t0
+    MUL_LL32_OP,       // 1: Multiply low×low, latch carry
+    MUL_X0_32_OP,      // 2: Cross multiply rs1_hi × rs2_lo
+    MUL_X1_32_OP,      // 3: Cross multiply rs1_lo × rs2_hi
+    MUL_HH32_OP,       // 4: Multiply high×high
+    FINISH_HI_OP       // 5: Final combination without shifts
   } state_t;
 
   state_t state_d, state_q;
@@ -110,6 +93,16 @@ module mulhu_expander #(
     return {imm[11:5], rs2, rs1, funct3, imm[4:0], opcode};
   endfunction
 
+  // Helper function for R4-type instructions (for FINISH_HI)
+  // Format: funct2(2) | rs3(5) | rs2(5) | rs1(5) | funct3(3) | rd(5) | opcode(7)
+  function automatic logic [31:0] make_r4_type(
+    input logic [1:0] funct2, input logic [4:0] rs3, input logic [4:0] rs2,
+    input logic [4:0] rs1, input logic [2:0] funct3, input logic [4:0] rd,
+    input logic [6:0] opcode
+  );
+    return {funct2, rs3, rs2, rs1, funct3, rd, opcode};
+  endfunction
+
   // Main combinational logic
   always_comb begin
     illegal_instr_o    = illegal_instr_i;
@@ -123,89 +116,46 @@ module mulhu_expander #(
     instr_o_reg        = instr_i;
 
     if (is_mulhu_i && state_q != IDLE) begin
-      // In expansion - execute micro-ops
+      // In expansion - execute fused micro-ops
       fetch_stall_o = 1'b1;
 
       case (state_q)
-        // Computation phase
-        SRLI_T1: begin
-          instr_o_reg = make_i_type(12'd32, rs1_q, 3'b101, REG_T1, 7'b0010011);
-          if (issue_ack_i) state_d = LI_T4;
+        // Fused microop sequence (5 operations vs 20 in original)
+        MUL_LL32_OP: begin
+          // mul_ll32 (no dest reg - stores carry internally): MUL rs1_lo × rs2_lo
+          // We use REG_T0 as dummy dest, but multiplier will latch upper 32 bits as carry
+          // Encoding: custom-1 opcode (0101011), funct7=0000010, funct3=000
+          instr_o_reg = make_r_type(7'b0000010, rs2_q, rs1_q, 3'b000, REG_T0, 7'b0101011);
+          if (issue_ack_i) state_d = MUL_X0_32_OP;
         end
-        LI_T4: begin
-          instr_o_reg = make_i_type(12'hFFF, 5'd0, 3'b000, REG_T4, 7'b0010011);
-          if (issue_ack_i) state_d = SRLI_T4;
+
+        MUL_X0_32_OP: begin
+          // mul_x0_32 tX0, rs1_hi, rs2_lo: cross multiply (to multiplier0)
+          // Encoding: custom-1 opcode (0101011), funct7=0000011, funct3=000
+          instr_o_reg = make_r_type(7'b0000011, rs2_q, rs1_q, 3'b000, REG_T5, 7'b0101011);
+          if (issue_ack_i) state_d = MUL_X1_32_OP;
         end
-        SRLI_T4: begin
-          instr_o_reg = make_i_type(12'd32, REG_T4, 3'b101, REG_T4, 7'b0010011);
-          if (issue_ack_i) state_d = AND_T0;
+
+        MUL_X1_32_OP: begin
+          // mul_x1_32 tX1, rs1_lo, rs2_hi: cross multiply (to multiplier1, can be parallel)
+          // Encoding: custom-1 opcode (0101011), funct7=0000100, funct3=000
+          instr_o_reg = make_r_type(7'b0000100, rs2_q, rs1_q, 3'b000, REG_T6, 7'b0101011);
+          if (issue_ack_i) state_d = MUL_HH32_OP;
         end
-        AND_T0: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T4, rs1_q, 3'b111, REG_T0, 7'b0110011);
-          if (issue_ack_i) state_d = SRLI_T3;
+
+        MUL_HH32_OP: begin
+          // mul_hh32 tH, rs1_hi, rs2_hi: multiply high parts
+          // Encoding: custom-1 opcode (0101011), funct7=0000101, funct3=000
+          instr_o_reg = make_r_type(7'b0000101, rs2_q, rs1_q, 3'b000, REG_T4, 7'b0101011);
+          if (issue_ack_i) state_d = FINISH_HI_OP;
         end
-        SRLI_T3: begin
-          instr_o_reg = make_i_type(12'd32, rs2_q, 3'b101, REG_T3, 7'b0010011);
-          if (issue_ack_i) state_d = AND_T2;
-        end
-        AND_T2: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T4, rs2_q, 3'b111, REG_T2, 7'b0110011);
-          if (issue_ack_i) state_d = MUL1;
-        end
-        MUL1: begin
-          instr_o_reg = make_r_type(7'b0000001, REG_T2, REG_T0, 3'b000, REG_T4, 7'b0110011);
-          if (issue_ack_i) state_d = MUL2;
-        end
-        MUL2: begin
-          instr_o_reg = make_r_type(7'b0000001, REG_T3, REG_T0, 3'b000, REG_T5, 7'b0110011);
-          if (issue_ack_i) state_d = MUL3;
-        end
-        MUL3: begin
-          instr_o_reg = make_r_type(7'b0000001, REG_T2, REG_T1, 3'b000, REG_T6, 7'b0110011);
-          if (issue_ack_i) state_d = MUL4;
-        end
-        MUL4: begin
-          instr_o_reg = make_r_type(7'b0000001, REG_T3, REG_T1, 3'b000, rd_q, 7'b0110011);
-          if (issue_ack_i) state_d = SRLI_T0_2;
-        end
-        SRLI_T0_2: begin
-          instr_o_reg = make_i_type(12'd32, REG_T4, 3'b101, REG_T0, 7'b0010011);
-          if (issue_ack_i) state_d = ADD1;
-        end
-        ADD1: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T0, REG_T5, 3'b000, REG_T5, 7'b0110011);
-          if (issue_ack_i) state_d = SLTU1;
-        end
-        SLTU1: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T0, REG_T5, 3'b011, REG_T0, 7'b0110011);
-          if (issue_ack_i) state_d = ADD2;
-        end
-        ADD2: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T6, REG_T5, 3'b000, REG_T1, 7'b0110011);
-          if (issue_ack_i) state_d = SLTU2;
-        end
-        SLTU2: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T6, REG_T1, 3'b011, REG_T2, 7'b0110011);
-          if (issue_ack_i) state_d = ADD3;
-        end
-        ADD3: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T2, REG_T0, 3'b000, REG_T0, 7'b0110011);
-          if (issue_ack_i) state_d = SLLI_T0;
-        end
-        SLLI_T0: begin
-          instr_o_reg = make_i_type(12'd32, REG_T0, 3'b001, REG_T0, 7'b0010011);
-          if (issue_ack_i) state_d = SRLI_T1_2;
-        end
-        SRLI_T1_2: begin
-          instr_o_reg = make_i_type(12'd32, REG_T1, 3'b101, REG_T1, 7'b0010011);
-          if (issue_ack_i) state_d = OR_T0_T1;
-        end
-        OR_T0_T1: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T1, REG_T0, 3'b110, REG_T0, 7'b0110011);
-          if (issue_ack_i) state_d = ADD_FINAL;
-        end
-        ADD_FINAL: begin
-          instr_o_reg = make_r_type(7'b0000000, REG_T0, rd_q, 3'b000, rd_q, 7'b0110011);
+
+        FINISH_HI_OP: begin
+          // finish_hi rd, tH, tX0, tX1, {carry32}: rd = tH + ((tX0 + tX1 + carry32) >> 32)
+          // Uses R4-type format: funct2=00, rs3=REG_T6 (tX1), rs2=REG_T5 (tX0), rs1=REG_T4 (tH)
+          // Encoding: custom-1 opcode (0101011), funct3=001
+          // The carry32 is accessed from internal multiplier state
+          instr_o_reg = make_r4_type(2'b00, REG_T6, REG_T5, REG_T4, 3'b001, rd_q, 7'b0101011);
           if (issue_ack_i) begin
             state_d = IDLE;
             fetch_stall_o = 1'b0;
@@ -221,14 +171,14 @@ module mulhu_expander #(
         end
       endcase
     end else if (is_mulhu_i && state_q == IDLE) begin
-      // Start MULHU expansion - begin with extraction
+      // Start MULHU expansion with fused microops
       rs1_d = instr_i[19:15];
       rs2_d = instr_i[24:20];
       rd_d  = instr_i[11:7];
-      state_d = SRLI_T1;
+      state_d = MUL_LL32_OP;
       fetch_stall_o = 1'b1;
-      // t1 = rs1 >> 32
-      instr_o_reg = make_i_type(12'd32, instr_i[19:15], 3'b101, REG_T1, 7'b0010011);
+      // First microop: mul_ll32 to latch carry
+      instr_o_reg = make_r_type(7'b0000010, instr_i[24:20], instr_i[19:15], 3'b000, REG_T0, 7'b0101011);
     end else begin
       // Not MULHU - pass through
       state_d = IDLE;

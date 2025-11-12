@@ -368,6 +368,12 @@ package ariane_pkg;
     MULHU,
     MULHSU,
     MULW,
+    // MULHU Fused Microops (32-bit partial multiply operations)
+    MUL_LL32,   // Multiply low×low 32-bit, latch carry (upper 32 bits)
+    MUL_X0_32,  // Cross multiply: rs1_hi × rs2_lo (to multiplier0)
+    MUL_X1_32,  // Cross multiply: rs1_lo × rs2_hi (to multiplier1)
+    MUL_HH32,   // Multiply high×high 32-bit
+    FINISH_HI,  // Final combination: rd = rs1 + ((rs2 + rs3 + carry32) >> 32)
     // Divisions
     DIV,
     DIVU,

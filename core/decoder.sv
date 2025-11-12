@@ -1640,6 +1640,35 @@ module decoder
           instruction_o.rd = instr.utype.rd;
         end
 
+        // Custom-1 opcode for fused MULHU microops
+        7'b0101011: begin
+          instruction_o.fu  = MULT;
+          instruction_o.rs1 = instr.rtype.rs1;
+          instruction_o.rs2 = instr.rtype.rs2;
+          instruction_o.rd  = instr.rtype.rd;
+
+          // Decode based on funct7 and funct3
+          if (instr.rtype.funct3 == 3'b000) begin
+            case (instr.rtype.funct7)
+              7'b0000010: instruction_o.op = ariane_pkg::MUL_LL32;   // mul_ll32
+              7'b0000011: instruction_o.op = ariane_pkg::MUL_X0_32;  // mul_x0_32
+              7'b0000100: instruction_o.op = ariane_pkg::MUL_X1_32;  // mul_x1_32
+              7'b0000101: instruction_o.op = ariane_pkg::MUL_HH32;   // mul_hh32
+              default: illegal_instr = 1'b1;
+            endcase
+          end else if (instr.rtype.funct3 == 3'b001) begin
+            // FINISH_HI uses R4-type format: read rs1, rs2, and rs3 from instruction
+            // funct2 is instr[31:30], rs3 is instr[29:25]
+            instruction_o.op  = ariane_pkg::FINISH_HI;
+            instruction_o.rs1 = instr.r4type.rs1;  // tH
+            instruction_o.rs2 = instr.r4type.rs2;  // tX0
+            // For rs3 (tX1), use RS3 imm_select to pass the third register via result field
+            imm_select = RS3;
+          end else begin
+            illegal_instr = 1'b1;
+          end
+        end
+
         default: illegal_instr = 1'b1;
       endcase
     end
