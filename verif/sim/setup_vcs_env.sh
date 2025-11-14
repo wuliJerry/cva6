@@ -2,9 +2,9 @@
 # CVA6 VCS Simulation Environment Setup Script
 
 # Set CVA6 paths
-export CVA6_REPO_DIR=/home/ruijieg/cva6_66inline/
-export CVA6_TB_DIR=/home/ruijieg/cva6_66inline/verif/tb/core
-export CORE_V_VERIF=/home/ruijieg/cva6_66inline/verif/core-v-verif
+export CVA6_REPO_DIR=/home/ruijieg/cva6_66inline_micro/
+export CVA6_TB_DIR=/home/ruijieg/cva6_66inline_micro/verif/tb/core
+export CORE_V_VERIF=/home/ruijieg/cva6_66inline_micro/verif/core-v-verif
 
 # RISC-V toolchain (already set in your environment, but including for completeness)
 export RISCV=/home/ruijieg/riscv
