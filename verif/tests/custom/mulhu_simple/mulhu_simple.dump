@@ -40,24 +40,26 @@ Disassembly of section .text.init:
     80000078:	01060633          	add	a2,a2,a6
     8000007c:	fff68693          	addi	a3,a3,-1
     80000080:	fc069ce3          	bnez	a3,80000058 <test_loop>
-    80000084:	b00024f3          	csrr	s1,mcycle
-    80000088:	b0202573          	csrr	a0,minstret
-    8000008c:	00002417          	auipc	s0,0x2
-    80000090:	f7440413          	addi	s0,s0,-140 # 80002000 <profiling_data>
-    80000094:	01643023          	sd	s6,0(s0)
-    80000098:	01543423          	sd	s5,8(s0)
-    8000009c:	412485b3          	sub	a1,s1,s2
-    800000a0:	00b43823          	sd	a1,16(s0)
-    800000a4:	036ac733          	div	a4,s5,s6
-    800000a8:	00e43c23          	sd	a4,24(s0)
-    800000ac:	06400793          	li	a5,100
-    800000b0:	02fa87b3          	mul	a5,s5,a5
-    800000b4:	02b7c7b3          	div	a5,a5,a1
-    800000b8:	02f43023          	sd	a5,32(s0)
-    800000bc:	00001417          	auipc	s0,0x1
-    800000c0:	f4440413          	addi	s0,s0,-188 # 80001000 <tohost>
-    800000c4:	00100493          	li	s1,1
-    800000c8:	00943023          	sd	s1,0(s0)
+    80000084:	b00022f3          	csrr	t0,mcycle
+    80000088:	b0202373          	csrr	t1,minstret
+    8000008c:	412283b3          	sub	t2,t0,s2
+    80000090:	41330e33          	sub	t3,t1,s3
+    80000094:	036adbb3          	divu	s7,s5,s6
+    80000098:	00100c13          	li	s8,1
+    8000009c:	00040eb7          	lui	t4,0x40
+    800000a0:	001e8e9b          	addiw	t4,t4,1 # 40001 <_start-0x7ffbffff>
+    800000a4:	00de9e93          	slli	t4,t4,0xd
+    800000a8:	016eb023          	sd	s6,0(t4)
+    800000ac:	015eb423          	sd	s5,8(t4)
+    800000b0:	06400c93          	li	s9,100
+    800000b4:	019eb823          	sd	s9,16(t4)
+    800000b8:	017ebc23          	sd	s7,24(t4)
+    800000bc:	038eb023          	sd	s8,32(t4)
+    800000c0:	0cc0000f          	fence	io,io
+    800000c4:	00001f97          	auipc	t6,0x1
+    800000c8:	f3cf8f93          	addi	t6,t6,-196 # 80001000 <tohost>
+    800000cc:	00100293          	li	t0,1
+    800000d0:	005fb023          	sd	t0,0(t6)
 
-00000000800000cc <done>:
-    800000cc:	0000006f          	j	800000cc <done>
+00000000800000d4 <done>:
+    800000d4:	0000006f          	j	800000d4 <done>

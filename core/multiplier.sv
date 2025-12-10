@@ -48,7 +48,7 @@ module multiplier
   // Pipeline register signals
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_q;
   logic                             mult_valid_q;
-  logic [CVA6Cfg.XLEN*2-1:0]        mult_result_d, mult_result_q;
+  logic [                     65:0] mult_result_d, mult_result_q;  // 66-bit result
   logic [                      1:0] khi_d, khi_q;
   logic                             khi_we_d, khi_we_q;
 
@@ -61,28 +61,26 @@ module multiplier
   // Only accept the MUL instruction as valid.
   assign mult_valid = mult_valid_i && (operation_i == MUL);
 
-  // The core multiplier. For the lower XLEN bits (as required by MUL),
+  // The core multiplier: 64x64->66 bit multiplication
+  // For the lower XLEN bits (as required by MUL),
   // the result of a signed vs. unsigned multiply is identical.
   // We can therefore use a simple unsigned multiplication.
-  assign mult_result_d = operand_a_i * operand_b_i;
+  // Manually constrain the output to 66 bits by truncating the full product
+  assign mult_result_d = 66'(operand_a_i * operand_b_i);
 
-  // For Karatsuba MULHU expansion: compute 66-bit multiplication
-  // The upper 2 bits represent the carry from a 64x64->128 bit multiply
-  // that overflows into bits [65:64]
-  // This is computed by taking the upper 64 bits of the 128-bit product
-  // and extracting bits [1:0] (which represent overflow beyond 64 bits)
+  // For Karatsuba MULHU expansion: extract upper 2 bits from 66-bit multiplication
+  // The upper 2 bits (bits [65:64]) represent the high-order bits from the
+  // 64x64->66 bit multiply result
   always_comb begin
     khi_d = 2'b00;
     khi_we_d = 1'b0;
 
     // Only compute khi for valid MUL operations
     if (mult_valid_i && operation_i == MUL) begin
-      // Extract upper 2 bits from the full 128-bit product
+      // Extract bits [65:64] from the 66-bit product
       // For a 64x64 unsigned multiply: result = operand_a * operand_b
-      // The upper 64 bits are in mult_result_d[127:64]
-      // We want bits [65:64] of the conceptual 66-bit result
-      // which are bits [1:0] of the upper 64 bits
-      khi_d = mult_result_d[CVA6Cfg.XLEN+1:CVA6Cfg.XLEN];
+      // mult_result_d is 66 bits, we want the upper 2 bits
+      khi_d = mult_result_d[65:64];
       khi_we_d = 1'b1;
     end
   end
