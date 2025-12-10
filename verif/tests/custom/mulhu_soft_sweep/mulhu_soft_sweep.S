@@ -16,6 +16,9 @@
 #define OUTER_LOOPS      (TARGET_TOTAL_OPS / MULHU_INTERVAL)
 
 _start:
+    # Initialize stack pointer
+    li      sp, 0x84000000            # Stack pointer initialization
+
     # Initialize test data
     li      x5, 0x123456789ABCDEF0    # Test operand 1
     li      x6, 0x0FEDCBA987654321    # Test operand 2
@@ -63,16 +66,40 @@ inner_loop:
     bnez    x11, inner_loop           # Continue inner loop
 
     # Call software MULHU implementation after N multiplies
-    # Instrument call for profiling
+    # Instrument call for profiling (includes trap handler overhead)
+    # Start cycle counter before register saves
     csrr    x24, 0xB00                # s8 (x24) = entry mcycle
+    # Save registers that will be clobbered by __mulhu64_soft (like a trap handler)
+    addi    sp, sp, -64
+    sd      ra, 56(sp)
+    sd      t0, 48(sp)
+    sd      t1, 40(sp)
+    sd      t2, 32(sp)
+    sd      t3, 24(sp)
+    sd      t4, 16(sp)
+    sd      t5, 8(sp)
+    sd      t6, 0(sp)
+    # Prepare arguments and call __mulhu64_soft
     mv      a0, x5                    # First argument
     mv      a1, x6                    # Second argument
     call    __mulhu64_soft            # Call software MULHU
+    mv      x10, a0                   # Save result
+    # Restore saved registers
+    ld      t6, 0(sp)
+    ld      t5, 8(sp)
+    ld      t4, 16(sp)
+    ld      t3, 24(sp)
+    ld      t2, 32(sp)
+    ld      t1, 40(sp)
+    ld      t0, 48(sp)
+    ld      ra, 56(sp)
+    addi    sp, sp, 64
+    # End cycle counter after register restores
     csrr    x25, 0xB00                # s9 (x25) = exit mcycle
     sub     x25, x25, x24             # x25 = delta cycles
     add     x22, x22, x25             # Accumulate total cycles in s6
     addi    x23, x23, 1               # Increment call count in s7
-    add     x7, x7, a0                # Accumulate MULHU result
+    add     x7, x7, x10               # Accumulate MULHU result
 
     # Update operands for next iteration
     addi    x5, x5, 23                # Vary operand 1 (different prime)
