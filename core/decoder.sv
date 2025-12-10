@@ -1640,6 +1640,34 @@ module decoder
           instruction_o.rd = instr.utype.rd;
         end
 
+        // Custom-1 opcode for fused MULHU microops (32-bit Karatsuba operations)
+        7'b0101011: begin
+          instruction_o.fu  = MULT;
+          instruction_o.rs1 = instr.rtype.rs1;
+          instruction_o.rs2 = instr.rtype.rs2;
+          instruction_o.rd  = instr.rtype.rd;
+
+          // Decode based on funct7 and funct3
+          if (instr.rtype.funct3 == 3'b000) begin
+            // Standard R-type fused microops
+            case (instr.rtype.funct7)
+              7'b0000001: instruction_o.op = ariane_pkg::PREP_ADDS;  // prep_adds
+              7'b0000010: instruction_o.op = ariane_pkg::MUL_Z0_32;  // mul_z0_32
+              7'b0000011: instruction_o.op = ariane_pkg::MUL_Z1_32;  // mul_z1_32
+              7'b0000100: instruction_o.op = ariane_pkg::MUL_Z2_32;  // mul_z2_32
+              default: illegal_instr = 1'b1;
+            endcase
+          end else if (instr.rtype.funct3 == 3'b001) begin
+            // FINISH_K uses R4-type format to read 3 source registers
+            // rs1 = tZ2, rs2 = tZ0, rs3 (from instr[31:27]) = tZ1
+            instruction_o.op = ariane_pkg::FINISH_K;
+            // Pass rs3 via imm_select mechanism
+            imm_select = RS3;
+          end else begin
+            illegal_instr = 1'b1;
+          end
+        end
+
         default: illegal_instr = 1'b1;
       endcase
     end

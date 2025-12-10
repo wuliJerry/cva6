@@ -368,6 +368,12 @@ package ariane_pkg;
     MULHU,
     MULHSU,
     MULW,
+    // MULHU Fused Microops (32-bit Karatsuba operations for 66-bit multiplier)
+    PREP_ADDS,  // Prepare additions: tA = rs1[31:0] + rs1[63:32], tB = rs2[31:0] + rs2[63:32]
+    MUL_Z0_32,  // z0 = rs1_lo × rs2_lo, latch upper 34 bits [65:32] as carry_z0
+    MUL_Z1_32,  // z1 = (a0+a1) × (b0+b1), latch upper 34 bits [65:32] as carry_z1
+    MUL_Z2_32,  // z2 = rs1_hi × rs2_hi, latch upper 34 bits [65:32] as carry_z2
+    FINISH_K,   // Karatsuba finish: rd = z2 + (((z1 - z0 - z2) + carry_z0[32]) >> 32)
     // Divisions
     DIV,
     DIVU,
