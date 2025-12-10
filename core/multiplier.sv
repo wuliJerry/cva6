@@ -44,7 +44,7 @@ module multiplier
   // Pipeline register signals
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_q;
   logic                             mult_valid_q;
-  logic [CVA6Cfg.XLEN*2-1:0]        mult_result_d, mult_result_q;
+  logic [CVA6Cfg.XLEN-1:0]        mult_result_d, mult_result_q;
 
   // control signals
   logic mult_valid;
@@ -58,7 +58,7 @@ module multiplier
   // The core multiplier. For the lower XLEN bits (as required by MUL),
   // the result of a signed vs. unsigned multiply is identical.
   // We can therefore use a simple unsigned multiplication.
-  assign mult_result_d = operand_a_i * operand_b_i;
+  assign mult_result_d = 64'(operand_a_i * operand_b_i);
 
   // The output selection is now fixed since we only support MUL.
   // MUL returns the lower XLEN bits of the full product.
