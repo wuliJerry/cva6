@@ -44,7 +44,7 @@ module multiplier
   // Pipeline register signals
   logic [CVA6Cfg.TRANS_ID_BITS-1:0] trans_id_q;
   logic                             mult_valid_q;
-  logic [CVA6Cfg.XLEN*2-1:0]        mult_result_d, mult_result_q;
+  logic [CVA6Cfg.XLEN-1:0]        mult_result_d, mult_result_q;
 
   // Fused microop state: 32-bit carry register for MUL_LL32
   logic [31:0] carry32_q, carry32_d;
@@ -73,40 +73,60 @@ module multiplier
   assign b_lo = operand_b_i[31:0];
   assign b_hi = operand_b_i[63:32];
 
-  // Core multiplier and result selection
-  logic [63:0] mul32_result;  // Result of 32×32 multiply
+  // Single physical multiplier for all operations
+  logic [63:0] operand_a_selected, operand_b_selected;
+  logic [63:0] product;  // Single 64-bit product
   logic [CVA6Cfg.XLEN-1:0] finish_hi_result;
 
+  // Operand selection for multiplier based on operation
   always_comb begin
-    mult_result_d = operand_a_i * operand_b_i;  // Default: full 64×64 multiply
-    mul32_result = '0;
+    case (operation_i)
+      MUL_LL32: begin
+        operand_a_selected = {32'b0, a_lo};
+        operand_b_selected = {32'b0, b_lo};
+      end
+      MUL_X0_32: begin
+        operand_a_selected = {32'b0, a_hi};
+        operand_b_selected = {32'b0, b_lo};
+      end
+      MUL_X1_32: begin
+        operand_a_selected = {32'b0, a_lo};
+        operand_b_selected = {32'b0, b_hi};
+      end
+      MUL_HH32: begin
+        operand_a_selected = {32'b0, a_hi};
+        operand_b_selected = {32'b0, b_hi};
+      end
+      default: begin  // MUL and FINISH_HI
+        operand_a_selected = operand_a_i;
+        operand_b_selected = operand_b_i;
+      end
+    endcase
+  end
+
+  // Single multiplier - synthesizer will create only ONE physical multiplier
+  assign product = 64'(operand_a_selected * operand_b_selected);
+
+  // Result selection and carry management
+  always_comb begin
     carry32_d = carry32_q;  // Hold carry by default
     finish_hi_result = '0;
 
     case (operation_i)
       MUL_LL32: begin
         // Multiply low×low, latch upper 32 bits as carry
-        mul32_result = a_lo * b_lo;
-        carry32_d = mul32_result[63:32];
-        mult_result_d = {32'b0, mul32_result[31:0]};  // Lower 32 bits to result
+        carry32_d = product[63:32];
+        mult_result_d = {32'b0, product[31:0]};  // Lower 32 bits to result
       end
 
-      MUL_X0_32: begin
-        // Cross multiply: rs1_hi × rs2_lo, result is lower 32 bits
-        mul32_result = a_hi * b_lo;
-        mult_result_d = {32'b0, mul32_result[31:0]};
-      end
-
-      MUL_X1_32: begin
-        // Cross multiply: rs1_lo × rs2_hi, result is lower 32 bits
-        mul32_result = a_lo * b_hi;
-        mult_result_d = {32'b0, mul32_result[31:0]};
+      MUL_X0_32, MUL_X1_32: begin
+        // Cross multiply: result is lower 32 bits
+        mult_result_d = {32'b0, product[31:0]};
       end
 
       MUL_HH32: begin
         // Multiply high×high, full 64-bit result
-        mul32_result = a_hi * b_hi;
-        mult_result_d = mul32_result;
+        mult_result_d = product;
       end
 
       FINISH_HI: begin
@@ -130,7 +150,7 @@ module multiplier
 
       default: begin
         // MUL: standard 64×64 multiply, return lower 64 bits
-        mult_result_d = operand_a_i * operand_b_i;
+        mult_result_d = product;
       end
     endcase
   end
